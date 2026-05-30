@@ -73,4 +73,4 @@ Laravel 11+ ya no incluye `routes/api.php` por defecto para mantener el framewor
 ---
 
 ## Siguiente paso
-➡️ [02_controllers_guide.md](./02_controllers_guide.md)
+➡️ [02_form_requests_guide.md](./02_form_requests_guide.md)

@@ -52,7 +52,7 @@ class ClubFactory extends Factory
             'category_tag' => fake()->randomElement(['gaming', 'programming', 'music', 'anime']),
             
             // RELACIÓN HISTÓRICA: Crea un usuario automáticamente para que sea el dueño de este club
-            'owner_uuid' => User::factory(), 
+            'owner_uuid' => User::factory(),
         ];
     }
 }

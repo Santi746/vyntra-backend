@@ -15,7 +15,7 @@ Sin API Resources, si renombras una columna en PostgreSQL (ej: `cover_image_url`
 
 ## API Resources requeridos en Vyntra
 
-| API Resource | Modelo que formatea | Usado en |
+| API Resource | Modelo/Origen que formatea | Usado en |
 |---|---|---|
 | `UserResource` | `User` | AuthController, UserController |
 | `ClubResource` | `Club` | ClubController |
@@ -26,6 +26,8 @@ Sin API Resources, si renombras una columna en PostgreSQL (ej: `cover_image_url`
 | `DmMessageResource` | `DmMessage` | DmMessageController |
 | `NotificationResource` | `Notification` | NotificationController |
 | `FriendshipResource` | `Friendship` | FriendshipController |
+| `ClubRoleResource` | `ClubRole` | ClubRoleController |
+| `SessionResource` | `PersonalAccessToken` / Datos de Sesión | UserController |
 
 ---
 
@@ -43,12 +45,14 @@ Sin API Resources, si renombras una columna en PostgreSQL (ej: `cover_image_url`
   php artisan make:resource DmMessageResource
   php artisan make:resource NotificationResource
   php artisan make:resource FriendshipResource
+  php artisan make:resource ClubRoleResource
+  php artisan make:resource SessionResource
   ```
   > Los archivos se crearán en `app/Http/Resources/`
 
 ---
 
-### 2. Estructura interna de un API Resource (Patrón obligatorio)
+## 2. Estructura interna de un API Resource (Patrón obligatorio)
 
 Un API Resource tiene un único método `toArray()` que define exactamente qué campos se exponen y con qué nombre:
 
@@ -78,32 +82,85 @@ class MessageResource extends JsonResource
 
 ---
 
-### 3. Campos por Resource (Según el api_contract.md)
+### 3. Campos por Resource (Según el api_contract.md y api_requests_manifest.md)
 
 #### `UserResource`
 - [ ] `uuid`, `username`, `user_tag`, `first_name`, `last_name`
 - [ ] `avatar_url`, `banner_url`, `bio`, `location`
 - [ ] `is_online` *(boolean, no string)*
-- [ ] `created_at` *(ISO 8601)*
+- [ ] `created_at` y `updated_at` *(ISO 8601)*
+- [ ] `club_uuids` *(array de strings, obtenido condicionalmente de memberships)*
+  ```php
+  'club_uuids' => $this->whenLoaded('memberships', function() {
+      return $this->memberships->pluck('club_uuid');
+  }),
+  ```
 - [ ] ❌ Omitir: `password`, `remember_token`, `email_verified_at`
 
 #### `ClubResource`
 - [ ] `uuid`, `name`, `description`, `category_tag`
-- [ ] `avatar_url`, `cover_image_url`
+- [ ] `logo_url`, `banner_url` *(corregidos según el manifesto de peticiones, no cover_image_url)*
 - [ ] `owner_uuid`
-- [ ] `created_at`
-- [ ] Relación anidada (opcional): `owner` → `new UserResource($this->whenLoaded('clubOwner'))`
+- [ ] `members_count` y `online_count` *(conteos dinámicos o agregados)*
+- [ ] `is_verified` *(boolean)*
+- [ ] `created_at` y `updated_at` *(ISO 8601)*
+- [ ] Relación anidada: `owner_uuid` → `new UserResource($this->whenLoaded('owner'))`
 
-#### `MessageResource` (Canal y DM comparten estructura similar)
-- [ ] `uuid`, `client_uuid`, `content`, `status`
+#### `ClubCategoryResource`
+- [ ] `uuid`, `club_uuid`, `name`, `sort_order`
+- [ ] `is_private` *(boolean)*
+- [ ] Relación anidada: `channels` → `ClubChannelResource::collection($this->whenLoaded('channels'))`
+
+#### `ClubChannelResource`
+- [ ] `uuid`, `category_uuid`, `name`, `description`, `type` *(text o voice)*
+- [ ] `sort_order`
+- [ ] `is_private` *(boolean)*
+
+#### `MessageResource` (Canal de Club)
+- [ ] `uuid`, `client_uuid`, `channel_uuid`, `sender_uuid`, `content`, `status`
 - [ ] `parent_message_uuid`
-- [ ] `created_at`, `updated_at`
-- [ ] Relación anidada: `sender` → `new UserResource($this->whenLoaded('sender'))`
+- [ ] `created_at` y `updated_at` *(ISO 8601)*
+- [ ] Relación anidada: `user` (remitente) → `new UserResource($this->whenLoaded('sender'))`
 
-#### `NotificationResource`
-- [ ] `uuid`, `type`, `is_read`
-- [ ] `data` *(el campo JSON de la notificación)*
-- [ ] `created_at`
+#### `DmConversationResource`
+- [ ] `uuid`, `created_at`, `updated_at`
+- [ ] `participant` → `new UserResource($this->when($this->relationLoaded('user1') || $this->relationLoaded('user2'), function() { ... }))` (debe retornar el otro participante de la conversación que no sea el usuario autenticado)
+- [ ] `last_message` → `new DmMessageResource($this->whenLoaded('lastMessage'))`
+- [ ] `unread_count` *(int)*
+
+#### `DmMessageResource`
+- [ ] `uuid`, `client_uuid`, `dm_conversation_uuid`, `sender_uuid`, `content`, `status`
+- [ ] `parent_message_uuid`
+- [ ] `created_at` y `updated_at` *(ISO 8601)*
+- [ ] Relación anidada: `user` → `new UserResource($this->whenLoaded('sender'))`
+
+#### `NotificationResource` (Solicitudes de amistad / Notificaciones)
+- [ ] `uuid`, `type`, `is_read`, `data`
+- [ ] `created_at` y `updated_at` *(ISO 8601)*
+
+#### `FriendshipResource` (Para listar amistades y solicitudes)
+- [ ] `uuid` *(friendship_uuid)*, `status`
+- [ ] `friend` (o sender/recipient dependiendo del rol del usuario autenticado) → `new UserResource($this->whenLoaded('friend'))`
+- [ ] Para `USER-05` (Lista de amigos): la respuesta se puede aplanar en el Resource para retornar la estructura esperada:
+  ```php
+  return [
+      'uuid' => $friend->uuid,
+      'username' => $friend->username,
+      'display_name' => $friend->first_name . ' ' . $friend->last_name,
+      'avatar_url' => $friend->avatar_url,
+      'is_online' => $friend->is_online,
+      'friendship_uuid' => $this->uuid
+  ];
+  ```
+
+#### `ClubRoleResource`
+- [ ] `uuid`, `club_uuid`, `name`, `color`
+- [ ] `permissions` *(objeto/array asociativo de booleanos)*:
+  - `manage_channels`, `manage_roles`, `manage_members`, `send_messages`, `manage_club`
+- [ ] `is_fixed` *(boolean)*
+
+#### `SessionResource` (Sesiones activas - USER-04)
+- [ ] `uuid` *(ID del token)*, `os`, `browser`, `ip`, `location`, `is_current`, `type`
 
 ---
 
@@ -128,7 +185,7 @@ El método `$this->whenLoaded('sender')` en el Resource es el guardián que gara
 ## Resultado esperado al finalizar
 
 ```
-✅ 9 API Resources creados en app/Http/Resources/
+✅ 11 API Resources creados en app/Http/Resources/
 ✅ Ningún campo sensible (password, remember_token) se expone en ningún Resource
 ✅ Todas las relaciones anidadas usan whenLoaded() para prevenir N+1
 ✅ Fechas devueltas en formato ISO 8601
@@ -138,4 +195,4 @@ El método `$this->whenLoaded('sender')` en el Resource es el guardián que gara
 ---
 
 ## Siguiente paso
-➡️ [05_routes_guide.md](./05_routes_guide.md)
+➡️ [04_controllers_guide.md](./04_controllers_guide.md)

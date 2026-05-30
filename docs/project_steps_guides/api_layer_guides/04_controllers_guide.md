@@ -9,21 +9,25 @@
 
 ## ¿Qué Controllers necesita Vyntra?
 
-Basado en el `api_contract.md` y la arquitectura del sistema, estos son los Controllers requeridos:
+Basado en el `api_contract.md`, el `api_requests_manifest.md` y la arquitectura del sistema, estos son los Controllers requeridos:
 
-| Controller | Responsabilidad Principal |
-|---|---|
-| `AuthController` | Login, Logout, Registro |
-| `UserController` | Perfil del usuario autenticado, amistades |
-| `ClubController` | CRUD de clubes |
-| `ClubMemberController` | Unirse, salir, listar miembros de un club |
-| `ClubCategoryController` | CRUD de categorías dentro de un club |
-| `ClubChannelController` | CRUD de canales dentro de una categoría |
-| `ChannelMessageController` | Enviar y paginar mensajes de canal (cursor) |
-| `DmConversationController` | Crear y listar conversaciones privadas |
-| `DmMessageController` | Enviar y paginar mensajes privados (cursor) |
-| `NotificationController` | Listar y marcar notificaciones como leídas |
-| `FriendshipController` | Enviar, aceptar y rechazar solicitudes de amistad |
+| Controller | Responsabilidad Principal | Métodos Necesarios |
+|---|---|---|
+| `AuthController` | Login, Logout, Registro | `register()`, `login()`, `logout()` |
+| `UserController` | Perfil del usuario, sesiones activas, amistades | `me()`, `show()`, `updateProfile()`, `sessions()` |
+| `ClubController` | CRUD de clubes | `index()`, `show()`, `store()`, `update()`, `destroy()` |
+| `ClubMemberController` | Listar miembros, membresías del club, unirse/salir | `index()`, `show()`, `store()`, `destroy()` |
+| `ClubMemberRoleController` | Asignar y desasignar roles a miembros del club | `store()` (assignRole) |
+| `ClubCategoryController` | CRUD de categorías dentro de un club | `index()`, `store()`, `update()`, `destroy()` |
+| `ClubChannelController` | CRUD de canales dentro de una categoría/club | `index()`, `store()`, `update()`, `destroy()` |
+| `ClubRoleController` | CRUD de roles dentro del club | `index()`, `store()`, `update()`, `destroy()` |
+| `ChannelMessageController` | Enviar y paginar mensajes de canal (cursor) | `index()`, `store()` |
+| `DmConversationController` | Crear y listar conversaciones privadas | `index()`, `show()`, `store()` |
+| `DmMessageController` | Enviar y paginar mensajes directos (cursor) | `index()`, `store()` |
+| `NotificationController` | Listar notificaciones y marcarlas como leídas | `index()`, `markAsRead()` |
+| `FriendshipController` | Enviar, listar, aceptar y rechazar solicitudes | `index()` (friends), `pending()` (requests), `respond()` |
+| `ExploreController` | Obtener datos para la vista de exploración | `index()` |
+| `SearchController` | Búsqueda global de clubes y usuarios | `index()` |
 
 ---
 
@@ -36,13 +40,17 @@ Basado en el `api_contract.md` y la arquitectura del sistema, estos son los Cont
   php artisan make:controller UserController
   php artisan make:controller ClubController
   php artisan make:controller ClubMemberController
+  php artisan make:controller ClubMemberRoleController
   php artisan make:controller ClubCategoryController
   php artisan make:controller ClubChannelController
+  php artisan make:controller ClubRoleController
   php artisan make:controller ChannelMessageController
   php artisan make:controller DmConversationController
   php artisan make:controller DmMessageController
   php artisan make:controller NotificationController
   php artisan make:controller FriendshipController
+  php artisan make:controller ExploreController
+  php artisan make:controller SearchController
   ```
   > Los archivos se crearán en `app/Http/Controllers/`
 
@@ -88,12 +96,10 @@ El `AuthController` es el más crítico porque sin autenticación, ninguna otra 
 ```php
 public function login(LoginRequest $request): JsonResponse
 {
-    // 1. Verificar que las credenciales son correctas
-    if (!Auth::attempt($request->only('email', 'password'))) {
-        return response()->json(['message' => 'Credenciales inválidas'], 401);
-    }
+    // 1. Delegar la validación e intento de autenticación al Form Request
+    $request->authenticate();
 
-    // 2. Obtener el usuario autenticado
+    // 2. Obtener el usuario autenticado (si fallara, el Request ya lanzó la excepción)
     $user = Auth::user();
 
     // 3. Crear un token de Sanctum para este usuario
@@ -152,7 +158,38 @@ public function index(ClubChannel $channel, Request $request): JsonResponse
 
 ---
 
-### 5. Reglas generales de todos los Controllers
+### 5. Listados Estándar y Paginación Infinita (cursorPaginate)
+
+En el frontend (Next.js), existen múltiples interfaces que consumen listas mediante *Scroll Infinito* (`useInfiniteQuery`). Esto requiere **paginación por cursor**. 
+
+Además de los mensajes de chat, los siguientes controladores **deben** implementar paginación por cursor en sus métodos `index()`:
+- `DmConversationController` (Lista de chats abiertos)
+- `FriendshipController` (Lista de amigos y solicitudes)
+- `ClubMemberController` (Lista de miembros de un club)
+- `NotificationController` (Notificaciones)
+- `SearchController` (Búsqueda global)
+
+A diferencia de los mensajes de chat (que requieren lógica manual invertida), para estas listas estándar **Laravel ofrece el método nativo `cursorPaginate()`**, que simplifica todo el trabajo manteniendo la escalabilidad:
+
+```php
+public function index(Club $club): JsonResponse
+{
+    // cursorPaginate(15) hace toda la magia: lee el ?cursor de la URL y arma la consulta
+    $members = $club->members()->cursorPaginate(15);
+
+    return response()->json([
+        'data' => ClubMemberResource::collection($members->items()),
+        'meta' => [
+            'next_cursor' => $members->nextCursor()?->encode(), // Laravel formatea el cursor
+            'per_page'    => $members->perPage(),
+        ],
+    ]);
+}
+```
+
+---
+
+### 6. Reglas generales de todos los Controllers
 
 - [ ] Nunca escribir SQL en bruto (`DB::select("SELECT...")`) dentro de un Controller
 - [ ] Nunca usar `response()->json(['data' => $model->toArray()])` — usar siempre API Resources
@@ -165,13 +202,13 @@ public function index(ClubChannel $channel, Request $request): JsonResponse
 ## Resultado esperado al finalizar
 
 ```
-✅ 11 Controllers creados en app/Http/Controllers/
+✅ 15 Controllers creados en app/Http/Controllers/
 ✅ AuthController funcional con login/register/logout
-✅ ChannelMessageController con paginación por cursor
+✅ ChannelMessageController y DmMessageController con paginación por cursor manual
 ✅ Todos los métodos siguen el patrón: Request → Model → Resource
 ```
 
 ---
 
 ## Siguiente paso
-➡️ [03_form_requests_guide.md](./03_form_requests_guide.md)
+➡️ [05_routes_guide.md](./05_routes_guide.md)
