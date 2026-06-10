@@ -5,8 +5,21 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * Resource para formatear un Mensaje Directo en JSON.
+ *
+ * @package App\Http\Resources
+ *
+ * @property-read \App\Models\DmMessage $resource
+ */
 class DmMessageResource extends JsonResource
 {
+    /**
+     * Transforma el mensaje directo en un array JSON para la API.
+     *
+     * @param Request $request Petición HTTP
+     * @return array<string, mixed> Datos del mensaje directo
+     */
     public function toArray(Request $request): array
     {
         return [

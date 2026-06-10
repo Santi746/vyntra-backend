@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('name');
             $table->integer('sort_order')->default(0); // Orden en el que se mostrarán las categorías
             $table->boolean('is_private')->default(false);
+            $table->uuid('client_uuid')->nullable()->unique();
             $table->timestamps();
             $table->softDeletes();
 

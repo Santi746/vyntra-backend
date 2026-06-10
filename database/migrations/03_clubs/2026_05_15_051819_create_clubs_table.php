@@ -15,11 +15,12 @@ return new class extends Migration
             $table->uuid('uuid')->primary();
             $table->string('name');
             $table->string('description')->nullable();
-            $table->string('cover_image_url')->nullable();
+            $table->string('banner_url')->nullable();
             $table->string('avatar_url')->nullable();
             $table->foreignUuid('owner_uuid')->constrained('users', 'uuid');
             $table->index('owner_uuid'); // Índice esencial para PostgreSQL
             $table->string('category_tag')->nullable();
+            $table->uuid('client_uuid')->nullable()->unique();
             $table->timestamps();
             $table->softDeletes();
         });

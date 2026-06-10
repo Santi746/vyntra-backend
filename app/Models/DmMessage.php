@@ -8,6 +8,28 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+/**
+ * Mensaje directo dentro de una conversación privada.
+ *
+ * Similar a ChannelMessage pero para chats uno a uno.
+ * Usa client_uuid con UNIQUE compuesto por conversación
+ * para deduplicación en tiempo real.
+ *
+ * @property string $uuid UUID único del mensaje (PK)
+ * @property string $dm_conversation_uuid UUID de la conversación (FK)
+ * @property string $sender_uuid UUID del remitente (FK)
+ * @property string|null $parent_message_uuid UUID del mensaje padre (respuesta) (FK)
+ * @property string $content Contenido del mensaje
+ * @property string $status Estado del mensaje (sent, edited)
+ * @property string $client_uuid UUID de deduplicación del frontend
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DmMessage newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DmMessage newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|DmMessage query()
+ */
 #[Fillable(['dm_conversation_uuid', 'sender_uuid', 'parent_message_uuid', 'content', 'status', 'client_uuid'])]
 class DmMessage extends Model
 {

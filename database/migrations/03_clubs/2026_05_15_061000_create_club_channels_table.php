@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('type')->default('text'); // 'text' o 'voice'
             $table->integer('sort_order')->default(0);
             $table->boolean('is_private')->default(false);
+            $table->uuid('client_uuid')->nullable()->unique();
 
             $table->timestamps();
             $table->softDeletes();

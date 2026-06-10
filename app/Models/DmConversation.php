@@ -39,4 +39,13 @@ class DmConversation extends Model
     {
         return $this->hasMany(DmMessage::class, 'dm_conversation_uuid', 'uuid');
     }
+
+    // PERSPECTIVA: Una Conversación tiene un último mensaje (el más reciente).
+    // Se usa en DmConversationResource para mostrar la preview en la lista de chats.
+    // SQL: SELECT * FROM dm_messages WHERE dm_conversation_uuid = dm_conversations.uuid ORDER BY created_at DESC LIMIT 1;
+    public function lastMessage()
+    {
+        return $this->hasOne(DmMessage::class, 'dm_conversation_uuid', 'uuid')
+            ->orderBy('created_at', 'desc');
+    }
 }

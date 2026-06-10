@@ -57,6 +57,8 @@ class LoginRequest extends FormRequest
     /**
      * Intenta autenticar las credenciales de la petición.
      *
+     * @return void
+     *
      * @throws \Illuminate\Validation\ValidationException
      */
     public function authenticate(): void

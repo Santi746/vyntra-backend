@@ -905,17 +905,19 @@
 | Campo | Valor |
 |:---|:---|
 | **Método** | `PATCH` |
-| **Ruta** | `/api/clubs/{club_uuid}/categories/{category_uuid}` |
+| **Ruta** | `/api/clubs/{club_uuid}/categories` |
 | **Frontend Service** | `ClubService.editCategory(club_uuid, { category_uuid, name, is_private })` |
 | **Frontend Hook** | `useMutateEditCategory(club_uuid)` → optimistic update |
-| **FormRequest existente** | No existe — **NECESITA CREARSE** |
-| **Estado** | ❌ NO IMPLEMENTADO |
+| **FormRequest existente** | `UpdateClubCategoryRequest` ✅ |
+| **Estado** | ✅ IMPLEMENTADO |
 | **Requiere Broadcast** | ✅ |
+
+> **Convención actualizada:** El `category_uuid` viaja en el **body** de la petición, no en la URL.
 
 **Request Body:**
 ```json
 {
-  "client_uuid": "required|uuid",
+  "category_uuid": "required|uuid",
   "name": "sometimes|string|max:100",
   "is_private": "sometimes|boolean"
 }
@@ -937,17 +939,20 @@
 | Campo | Valor |
 |:---|:---|
 | **Método** | `POST` |
-| **Ruta** | `/api/clubs/{club_uuid}/categories/{category_uuid}/channels` |
+| **Ruta** | `/api/clubs/{club_uuid}/channels` |
 | **Frontend Service** | `ClubService.createChannel(club_uuid, category_uuid, { client_uuid, name, type, is_private })` |
 | **Frontend Hook** | `useMutateCreateChannel(club_uuid)` → optimistic update en `["club_categories", club_uuid]` |
-| **FormRequest existente** | `StoreClubChannelRequest` ⚠️ (VACÍO) |
-| **Estado** | ❌ NO IMPLEMENTADO |
+| **FormRequest existente** | `StoreClubChannelRequest` ✅ |
+| **Estado** | ✅ IMPLEMENTADO |
 | **Requiere Broadcast** | ✅ |
+
+> **Convención actualizada:** La ruta no incluye `{category_uuid}` en el path. El `category_uuid` viaja en el **body**.
 
 **Request Body:**
 ```json
 {
   "client_uuid": "required|uuid",
+  "category_uuid": "required|uuid",
   "name": "required|string|max:100",
   "type": "required|string|in:text,voice",
   "is_private": "sometimes|boolean"
@@ -1102,12 +1107,14 @@
 | Campo | Valor |
 |:---|:---|
 | **Método** | `PATCH` |
-| **Ruta** | `/api/clubs/{club_uuid}/roles/{role_uuid}` |
+| **Ruta** | `/api/clubs/{club_uuid}/roles` |
 | **Frontend Service** | `ClubService.updateRole(club_uuid, roleData)` |
 | **Frontend Hook** | `useMutateClubRoles(club_uuid).mutateUpdate` → optimistic update |
-| **FormRequest existente** | No existe — **NECESITA CREARSE** (`UpdateClubRoleRequest`) |
-| **Estado** | ❌ NO IMPLEMENTADO |
+| **FormRequest existente** | `UpdateClubRoleRequest` ✅ |
+| **Estado** | ✅ IMPLEMENTADO |
 | **Requiere Broadcast** | ✅ |
+
+> **Convención actualizada:** El UUID del rol viaja en el campo `uuid` del **body**, no en la URL.
 
 **Request Body:**
 ```json
@@ -1322,11 +1329,11 @@
 | `StoreFriendshipRequest` | ⚠️ Vacío | Agregar reglas: `client_uuid`, `action` |
 | `UpdateClubRequest` | ⚠️ Vacío | Agregar reglas: `client_uuid`, `name`, `description`, etc. |
 | `UpdateUserRequest` | ⚠️ Vacío | Agregar reglas: `client_uuid`, `username`, `first_name`, etc. |
-| `UpdateClubCategoryRequest` | ❌ No existe | **CREAR**: `client_uuid`, `name`, `is_private` |
-| `UpdateClubChannelRequest` | ❌ No existe | **CREAR**: `client_uuid`, `name`, `description`, `is_private` |
-| `StoreClubRoleRequest` | ❌ No existe | **CREAR**: `client_uuid`, `name`, `color`, `permissions` |
-| `UpdateClubRoleRequest` | ❌ No existe | **CREAR**: `client_uuid`, `name`, `color`, `permissions` |
-| `AssignClubRoleRequest` | ❌ No existe | **CREAR**: `client_uuid`, `role_uuid` |
+| `UpdateClubCategoryRequest` | ✅ Implementado | OK |
+| `UpdateClubChannelRequest` | ✅ Implementado | OK |
+| `StoreClubRoleRequest` | ✅ Implementado | OK |
+| `UpdateClubRoleRequest` | ✅ Implementado | OK |
+| `AssignClubRoleRequest` | ✅ Implementado | OK (sin `client_uuid`, usa `UNIQUE(club_member_uuid, role_uuid)`) |
 
 ### Controllers Necesarios
 
@@ -1337,9 +1344,9 @@
 | `ClubController` | ❌ No existe | `index()`, `show()`, `store()`, `update()` |
 | `ClubMemberController` | ❌ No existe | `index()`, `show()` (membership), `bans()` |
 | `ClubCategoryController` | ❌ No existe | `index()`, `store()`, `update()` |
-| `ClubChannelController` | ❌ No existe | `store()`, `update()`, `destroy()` |
+| `ClubChannelController` | ✅ Implementado | `index()`, `store()`, `update()`, `destroy()` |
 | `ClubRoleController` | ❌ No existe | `index()`, `store()`, `update()` |
-| `ClubMemberRoleController` | ❌ No existe | `store()` (assign role) |
+| `ClubMemberRoleController` | ✅ Implementado | `store()` (assign role) |
 | `ChannelMessageController` | ❌ No existe | `index()`, `store()` |
 | `DmConversationController` | ❌ No existe | `index()`, `show()` |
 | `DmMessageController` | ❌ No existe | `index()`, `store()` |

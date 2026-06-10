@@ -20,7 +20,8 @@ return new class extends Migration
             $table->string('color');
             $table->boolean('is_fixed')->default(false);
             $table->unsignedBigInteger('permissions')->default(0);
-            $table->integer('sort_order')->default(0); // Para la jerarquía visual y poder (Drag & Drop)
+            $table->integer('sort_order')->default(0);
+            $table->uuid('client_uuid')->nullable()->unique();
             $table->timestamps();
             $table->softDeletes();
 

@@ -33,7 +33,7 @@ class UpdateClubChannelRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // client_uuid removido: las peticiones PATCH son inherentemente idempotentes y modifican recursos existentes.
+            'client_uuid' => ['sometimes', 'string', 'max:255'],
             'name' => ['sometimes', 'string', 'max:100'],
             'description' => ['sometimes', 'string', 'max:500', 'nullable'],
             'is_private' => ['sometimes', 'boolean'],

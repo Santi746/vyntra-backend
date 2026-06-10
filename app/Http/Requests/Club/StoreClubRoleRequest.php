@@ -36,12 +36,7 @@ class StoreClubRoleRequest extends FormRequest
             'client_uuid' => ['required', 'uuid'], // Requerido para deduplicar la creación en tiempo real
             'name' => ['required', 'string', 'max:50'],
             'color' => ['required', 'string', 'regex:/^#[a-fA-F0-9]{6}$/i'],
-            'permissions' => ['required', 'array'],
-            'permissions.manage_channels' => ['required', 'boolean'],
-            'permissions.manage_roles' => ['required', 'boolean'],
-            'permissions.manage_members' => ['required', 'boolean'],
-            'permissions.send_messages' => ['required', 'boolean'],
-            'permissions.manage_club' => ['required', 'boolean'],
+            'permissions' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 

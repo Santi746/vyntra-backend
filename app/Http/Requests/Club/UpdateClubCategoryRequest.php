@@ -33,7 +33,8 @@ class UpdateClubCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // client_uuid removido: las peticiones PATCH son inherentemente idempotentes y modifican recursos existentes.
+            'category_uuid' => ['required', 'string', 'exists:club_categories,uuid'],
+            'client_uuid' => ['sometimes', 'string', 'max:255'],
             'name' => ['sometimes', 'string', 'max:100'],
             'is_private' => ['sometimes', 'boolean'],
         ];

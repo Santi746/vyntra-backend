@@ -8,7 +8,29 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-#[Fillable(['category_uuid', 'name', 'description', 'type', 'sort_order', 'is_private'])]
+/**
+ * Canal de chat o voz dentro de una categoría de club.
+ *
+ * Los canales de texto permiten enviar mensajes; los de voz
+ * están diseñados para comunicación por audio en tiempo real.
+ *
+ * @property string $uuid UUID único del canal (PK)
+ * @property string $category_uuid UUID de la categoría padre (FK)
+ * @property string $name Nombre del canal
+ * @property string|null $description Descripción del canal
+ * @property string $type Tipo de canal: "text" o "voice"
+ * @property int $sort_order Orden de visualización en la UI
+ * @property bool $is_private Si el canal es privado
+ * @property string|null $client_uuid UUID de deduplicación del frontend
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubChannel newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubChannel newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubChannel query()
+ */
+#[Fillable(['category_uuid', 'name', 'description', 'type', 'sort_order', 'is_private', 'client_uuid'])]
 class ClubChannel extends Model
 {
     use HasUuids, SoftDeletes, HasFactory;

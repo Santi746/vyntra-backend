@@ -176,12 +176,14 @@ Correspondencia técnica entre servicios del frontend, rutas, validadores (`Form
 | **Club** | `ClubService.createClub` | `POST` | `/api/clubs` | `StoreClubRequest` | `ClubController@store` | `ClubCreated` |
 | | `ClubService.updateClub` | `PATCH` | `/api/clubs/{club_uuid}` | `UpdateClubRequest` | `ClubController@update` | `ClubUpdated` |
 | | `ClubService.createCategory` | `POST` | `/api/clubs/{club_uuid}/categories` | `StoreClubCategoryRequest` | `ClubCategoryController@store` | `CategoryCreated` |
-| | `ClubService.updateCategory` | `PATCH` | `/api/clubs/{club_uuid}/categories/{cat_uuid}` | `UpdateClubCategoryRequest` | `ClubCategoryController@update` | `CategoryUpdated` |
+| | `ClubService.updateCategory` | `PATCH` | `/api/clubs/{club_uuid}/categories` | `UpdateClubCategoryRequest` | `ClubCategoryController@update` | `CategoryUpdated` |
 | | `ClubService.createChannel` | `POST` | `/api/clubs/{club_uuid}/channels` | `StoreClubChannelRequest` | `ClubChannelController@store` | `ChannelCreated` |
-| | `ClubService.updateChannel` | `PATCH` | `/api/clubs/{club_uuid}/channels/{chan_uuid}` | `UpdateClubChannelRequest` | `ClubChannelController@update` | `ChannelUpdated` |
+| | `ClubService.updateChannel` | `PATCH` | `/api/clubs/{club_uuid}/channels/{channel_uuid}` | `UpdateClubChannelRequest` | `ClubChannelController@update` | `ChannelUpdated` |
 | | `ClubService.createRole` | `POST` | `/api/clubs/{club_uuid}/roles` | `StoreClubRoleRequest` | `ClubRoleController@store` | `RoleCreated` |
-| | `ClubService.updateRole` | `PATCH` | `/api/clubs/{club_uuid}/roles/{role_uuid}` | `UpdateClubRoleRequest` | `ClubRoleController@update` | `RoleUpdated` |
-| | `ClubService.assignRole` | `POST` | `/api/clubs/{club_uuid}/members/{member_uuid}/roles` | `AssignClubRoleRequest` | `ClubMemberController@assignRole` | `MemberRoleUpdated` |
+| | `ClubService.updateRole` | `PATCH` | `/api/clubs/{club_uuid}/roles` | `UpdateClubRoleRequest` | `ClubRoleController@update` | `RoleUpdated` |
+| | `ClubService.assignRole` | `POST` | `/api/clubs/{club_uuid}/members/{user_uuid}/roles` | `AssignClubRoleRequest` | `ClubMemberRoleController@store` | `MemberRoleUpdated` |
+
+> **Nota de convención (actualizado 2026-06-04):** Los identificadores de sub-recurso en operaciones PATCH (update de categorías, canales, roles) viajan en el **body** de la petición (`category_uuid`, `channel_uuid`, `uuid` respectivamente), no en la URL. Esto simplifica la firma del endpoint y mantiene el path estable. La convención para operaciones destructivas (DELETE) sí mantiene el identificador en URL.
 | **User** | `UserService.updateUser` | `PATCH` | `/api/user` | `UpdateUserRequest` | `UserController@updateProfile` | `UserProfileUpdated` |
 | | `NotificationService.respondToFriendRequest` | `PATCH` | `/api/user/friend-requests/{request_uuid}` | `RespondFriendshipRequest` | `FriendshipController@respond` | `FriendRequestStatusChanged` |
 
@@ -206,11 +208,11 @@ flowchart TB
         CL1["POST /api/clubs — StoreClubRequest"]
         CL2["PATCH /api/clubs/{uuid} — UpdateClubRequest"]
         CL3["POST .../categories — StoreClubCategoryRequest"]
-        CL4["PATCH .../categories/{uuid} — UpdateClubCategoryRequest"]
+        CL4["PATCH .../categories — UpdateClubCategoryRequest"]
         CL5["POST .../channels — StoreClubChannelRequest"]
         CL6["PATCH .../channels/{uuid} — UpdateClubChannelRequest"]
         CL7["POST .../roles — StoreClubRoleRequest"]
-        CL8["PATCH .../roles/{uuid} — UpdateClubRoleRequest"]
+        CL8["PATCH .../roles — UpdateClubRoleRequest"]
         CL9["POST .../members/{uuid}/roles — AssignClubRoleRequest"]
     end
 

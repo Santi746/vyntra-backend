@@ -33,15 +33,11 @@ class UpdateClubRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // client_uuid removido: las peticiones PATCH son inherentemente idempotentes y modifican recursos existentes.
+            'uuid' => ['required', 'string', 'exists:club_roles,uuid'],
+            'client_uuid' => ['sometimes', 'string', 'max:255'],
             'name' => ['sometimes', 'string', 'max:50'],
             'color' => ['sometimes', 'string', 'regex:/^#[a-fA-F0-9]{6}$/i'],
-            'permissions' => ['sometimes', 'array'],
-            'permissions.manage_channels' => ['sometimes', 'boolean'],
-            'permissions.manage_roles' => ['sometimes', 'boolean'],
-            'permissions.manage_members' => ['sometimes', 'boolean'],
-            'permissions.send_messages' => ['sometimes', 'boolean'],
-            'permissions.manage_club' => ['sometimes', 'boolean'],
+            'permissions' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 

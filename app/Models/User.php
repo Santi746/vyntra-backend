@@ -10,10 +10,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
+use App\Enums\ClubPermission;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Concerns\HasUuids; // Trait obligatorio para UUIDs
 
 /**
+ * Modelo principal de usuario del sistema.
+ *
+ * Representa un usuario registrado en Vyntra. Puede pertenecer a clubs,
+ * enviar mensajes directos, recibir notificaciones en tiempo real y
+ * autenticarse mediante tokens Sanctum.
+ *
  * @property string $uuid // Clave primaria
  * @property string $username
  * @property string $user_tag
@@ -54,6 +61,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids; // Trait obligatorio para UU
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUuid($value)
  * @property string|null $deleted_at
  * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereDeletedAt($value)
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read int|null $tokens_count
+ * @method \Laravel\Sanctum\NewAccessToken createToken(string $name, array $abilities = ['*']) Crea un token de acceso personal para el usuario
+ * @method \Laravel\Sanctum\PersonalAccessToken|null currentAccessToken() Obtiene el token de acceso asociado a la solicitud actual
+ * @method \Illuminate\Database\Eloquent\Relations\MorphMany<static, \Laravel\Sanctum\PersonalAccessToken> tokens() Relación polimórfica con los tokens Sanctum del usuario
+ * @method bool tokenCan(string $ability) Verifica si el token de acceso actual posee una habilidad específica
  * @mixin \Eloquent
  */
 #[Fillable(['username', 'user_tag', 'first_name', 'last_name', 'email', 'password', 'bio', 'avatar_url', 'banner_url', 'location', 'is_online'])]
@@ -119,5 +132,43 @@ class User extends Authenticatable
     public function appNotifications()
     {
         return $this->hasMany(Notification::class, 'user_uuid', 'uuid');
+    }
+
+    /**
+     * Verifica si el usuario tiene un permiso específico dentro de un club.
+     *
+     * El chequeo se hace en tres pasos:
+     *   1. Owner bypass: si el usuario es dueño del club, siempre tiene el permiso.
+     *   2. ADMINISTRATOR bypass: si el bitmask acumulado tiene ADMINISTRATOR, pasa todo.
+     *   3. Suma los `permissions` de todos los roles asignados al miembro con OR bitwise
+     *      y compara con AND contra el permiso solicitado.
+     *
+     * @param  Club   $club
+     * @param  int    $permission Constante de \App\Enums\ClubPermission
+     * @return bool
+     */
+    public function hasClubPermission(Club $club, int $permission): bool
+    {
+        if ($club->owner_uuid === $this->uuid) {
+            return true;
+        }
+
+        $membership = $this->memberships()
+            ->where('club_uuid', $club->uuid)
+            ->with(['roles' => fn ($q) => $q->select('club_roles.uuid', 'club_roles.permissions')])
+            ->first();
+
+        if (!$membership) {
+            return false;
+        }
+
+        $bitmask = $membership->roles
+            ->reduce(fn ($carry, $role) => $carry | (int) $role->permissions, 0);
+
+        if (($bitmask & ClubPermission::ADMINISTRATOR) === ClubPermission::ADMINISTRATOR) {
+            return true;
+        }
+
+        return ($bitmask & $permission) === $permission;
     }
 }

@@ -23,7 +23,9 @@ return new class extends Migration
             $table->string('status')->default('sent'); // 'sent', 'edited', etc.
 
             // Idempotencia: Bloquea mensajes clonados enviados al mismo tiempo por fallas de lag
-            $table->uuid('client_uuid')->unique();
+            // NOTA: UNIQUE compuesto con dm_conversation_uuid para evitar colisiones entre conversaciones
+            $table->uuid('client_uuid');
+            $table->unique(['dm_conversation_uuid', 'client_uuid']);
 
             $table->timestamps();
             $table->softDeletes();

@@ -8,6 +8,28 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+/**
+ * Mensaje dentro de un canal de club.
+ *
+ * Soporta respuestas en hilo mediante parent_message_uuid
+ * y deduplicación en tiempo real mediante client_uuid
+ * con restricción UNIQUE compuesta por canal.
+ *
+ * @property string $uuid UUID único del mensaje (PK)
+ * @property string $club_channel_uuid UUID del canal donde se envió (FK)
+ * @property string $sender_uuid UUID del remitente (FK)
+ * @property string|null $parent_message_uuid UUID del mensaje padre (respuesta) (FK)
+ * @property string $content Contenido del mensaje
+ * @property string $status Estado del mensaje (sent, edited)
+ * @property string $client_uuid UUID de deduplicación del frontend
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ChannelMessage newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ChannelMessage newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ChannelMessage query()
+ */
 #[Fillable(['club_channel_uuid', 'sender_uuid', 'parent_message_uuid', 'content', 'status', 'client_uuid'])]
 class ChannelMessage extends Model
 {

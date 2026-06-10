@@ -7,6 +7,21 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+/**
+ * Relación pivote entre un miembro y un rol en un club.
+ *
+ * Tabla Many-to-Many que asigna roles específicos a miembros.
+ *
+ * @property string $uuid UUID único de la asignación (PK)
+ * @property string $club_member_uuid UUID del miembro (FK)
+ * @property string $role_uuid UUID del rol asignado (FK)
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubMemberRole newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubMemberRole newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubMemberRole query()
+ */
 #[Fillable(['club_member_uuid', 'role_uuid'])]
 class ClubMemberRole extends Model
 {

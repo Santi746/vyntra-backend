@@ -9,6 +9,26 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+/**
+ * Notificación de la aplicación dirigida a un usuario.
+ *
+ * Soporta múltiples tipos (friend_request, club_invite, etc.)
+ * con datos dinámicos almacenados en formato JSON.
+ *
+ * @property string $uuid UUID único de la notificación (PK)
+ * @property string $user_uuid UUID del usuario destinatario (FK)
+ * @property string $type Tipo de notificación
+ * @property array|null $data Datos adicionales en formato JSON
+ * @property bool $is_read Indica si la notificación fue leída
+ * @property string|null $client_uuid UUID de deduplicación del frontend
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification query()
+ */
 #[Fillable(['user_uuid', 'type', 'data', 'is_read', 'client_uuid'])]
 #[Hidden(['data'])]
 class Notification extends Model

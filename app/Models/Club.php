@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-#[Fillable(['name', 'description', 'cover_image_url', 'avatar_url', 'owner_uuid', 'category_tag'])]
+#[Fillable(['name', 'description', 'avatar_url', 'banner_url', 'owner_uuid', 'category_tag', 'client_uuid'])]
 class Club extends Model
 {
     use HasUuids, SoftDeletes, HasFactory;

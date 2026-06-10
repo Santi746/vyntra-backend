@@ -18,6 +18,7 @@ class ClubRoleFactory extends Factory
             'color' => fake()->hexColor(),
             'is_fixed' => fake()->boolean(10),
             'permissions' => fake()->numberBetween(1, 255),
+            'client_uuid' => fake()->uuid(),
         ];
     }
 }

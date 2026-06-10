@@ -27,7 +27,9 @@ return new class extends Migration
             $table->string('status')->default('sent'); // 'sent', 'edited', etc.
             
             // Protocolo de Idempotencia (Regla de Tiempo Real): Evita mensajes duplicados por lag
-            $table->uuid('client_uuid')->unique(); 
+            // NOTA: UNIQUE compuesto con club_channel_uuid para que dos canales no compartan el mismo espacio de client_uuids
+            $table->uuid('client_uuid');
+            $table->unique(['club_channel_uuid', 'client_uuid']);
             
             $table->timestamps();
             $table->softDeletes();

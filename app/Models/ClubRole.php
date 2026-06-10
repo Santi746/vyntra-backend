@@ -8,12 +8,33 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-#[Fillable(['club_uuid', 'name', 'color', 'is_fixed', 'permissions'])]
+/**
+ * Rol personalizado dentro de un club.
+ *
+ * Los roles agrupan permisos bitwise y se asignan a miembros
+ * del club para controlar qué acciones pueden realizar.
+ *
+ * @property string $uuid UUID único del rol (PK)
+ * @property string $club_uuid UUID del club al que pertenece (FK)
+ * @property string $name Nombre visible del rol
+ * @property string $color Color hexadecimal del rol (ej: #FF0000)
+ * @property bool $is_fixed Si el rol es fijo del sistema (no editable)
+ * @property int $sort_order Orden de jerarquía del rol
+ * @property int $permissions Permisos en formato bitmask
+ * @property string|null $client_uuid UUID de deduplicación del frontend
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubRole newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubRole newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubRole query()
+ */
+#[Fillable(['club_uuid', 'name', 'color', 'is_fixed', 'sort_order', 'permissions', 'client_uuid'])]
 class ClubRole extends Model
 {
     use HasUuids, SoftDeletes, HasFactory;
 
-    // Se le asigna la tabla 'club_roles'
     protected $table = 'club_roles';
     protected $primaryKey = 'uuid';
 
@@ -39,7 +60,8 @@ class ClubRole extends Model
     {
         return [
             'is_fixed' => 'boolean',
-            'permissions' => 'integer'
+            'sort_order' => 'integer',
+            'permissions' => 'integer',
         ];
     }
 }

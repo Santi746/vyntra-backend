@@ -22,9 +22,10 @@ class ClubFactory extends Factory
             'name' => fake()->unique()->company(),
             'description' => fake()->sentence(),
             'avatar_url' => fake()->imageUrl(200, 200, 'abstract'),
-            'cover_image_url' => fake()->imageUrl(800, 400, 'nature'),
+            'banner_url' => fake()->imageUrl(800, 400, 'nature'),
             'category_tag' => fake()->randomElement(['gaming', 'programming', 'music', 'anime']),
             'owner_uuid' => User::factory(),
+            'client_uuid' => fake()->uuid(),
         ];
     }
 }

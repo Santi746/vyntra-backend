@@ -8,7 +8,27 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-#[Fillable(['club_uuid', 'name', 'sort_order', 'is_private'])]
+/**
+ * Categoría de canales dentro de un club.
+ *
+ * Agrupa canales de chat/voz en secciones organizadas
+ * (ej: "General", "Comunidad", "Gaming").
+ *
+ * @property string $uuid UUID único de la categoría (PK)
+ * @property string $club_uuid UUID del club al que pertenece (FK)
+ * @property string $name Nombre visible de la categoría
+ * @property int $sort_order Orden de visualización en la UI
+ * @property bool $is_private Si la categoría es privada
+ * @property string|null $client_uuid UUID de deduplicación del frontend
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ *
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubCategory newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubCategory newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubCategory query()
+ */
+#[Fillable(['club_uuid', 'name', 'sort_order', 'is_private', 'client_uuid'])]
 class ClubCategory extends Model
 {
     use HasUuids, SoftDeletes, HasFactory;

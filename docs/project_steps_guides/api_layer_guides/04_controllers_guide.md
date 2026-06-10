@@ -1,40 +1,325 @@
 # 🧠 Guía: Controllers (Controladores)
 
-**Objetivo:** Crear los Controladores de Vyntra que actúan como el cerebro de cada flujo de la API. Cada Controller recibe la petición ya validada, utiliza los Modelos para interactuar con PostgreSQL, y delega la respuesta a un API Resource.
+**Objetivo:** Crear los Controladores de Vyntra que actúan como el coordinador de cada flujo de la API. Cada Controller recibe la petición ya validada, utiliza los Modelos para interactuar con PostgreSQL, y delega la respuesta a un API Resource.
 
 > [!IMPORTANT]
 > **Regla de Oro:** El Controller es el coordinador, NO el obrero. No escribe SQL a mano, no valida datos, no formatea JSON. Solo dirige el tráfico entre capas.
 
 ---
 
-## ¿Qué Controllers necesita Vyntra?
+## Los 7 Patrones de un Controller
 
-Basado en el `api_contract.md`, el `api_requests_manifest.md` y la arquitectura del sistema, estos son los Controllers requeridos:
+No existe "un patrón único". Hay **7 formas distintas** de escribir un método, y cada cual se usa en una situación específica. Esta sección explica CUÁNDO usar cada uno y POR QUÉ la sintaxis cambia.
+
+---
+
+### Patrón 1 — Lectura de un solo objeto (`show`, `me`)
+
+**Cuándo:** El frontend pide UN objeto por su UUID (o el usuario autenticado).
+
+```php
+// show() — con Route Model Binding, Laravel busca el modelo automáticamente
+public function show(Club $club): JsonResponse
+{
+    $club->load('clubOwner'); // cargar relaciones anidadas antes del Resource
+
+    return response()->json([
+        'status' => 'success',
+        'data' => new ClubResource($club),
+    ]);
+}
+
+// me() — devuelve el usuario autenticado, sin parámetro de ruta
+public function me(Request $request): JsonResponse
+{
+    return response()->json([
+        'status' => 'success',
+        'data' => new UserResource($request->user()->load('memberships')),
+    ]);
+}
+```
+
+**Sintaxis clave:**
+- `new ClubResource($club)` → objeto individual (NO `::collection`)
+- Se devuelve dentro de `['status' => 'success', 'data' => ...]` (Standard Envelope para objetos)
+- Route Model Binding: Laravel inyecta `Club $club` Finds the registro por UUID automáticamente, si no existe lanza 404
+- `$club->load(...)` carga relaciones ANTES del Resource, evitando N+1
+
+---
+
+### Patrón 2 — Creación simple (`store` sin idempotencia)
+
+**Cuándo:** Crear un recurso donde NO hay riesgo de duplicado (ej: unirse a un club — cada usuario solo se une una vez).
+
+```php
+public function store(Request $request, Club $club): JsonResponse
+{
+    $membership = ClubMember::create([
+        'user_uuid' => $request->user()->uuid,
+        'club_uuid' => $club->uuid,
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => new ClubMemberResource($membership->load('user')),
+    ], 201);
+}
+```
+
+**Sintaxis clave:**
+- Código HTTP `201` (Created) en el segundo parámetro de `response()->json`
+- `->load('user')` DESPUÉS de create → carga la relación recién creada
+- Si la BD lanza UNIQUE violation porque ya existe, Laravel devuelve 500. Para evitarlo y responder 200 si ya existe → usar Patrón 3
+
+---
+
+### Patrón 3 — Creación idempotente (`store` con `firstOrCreate`)
+
+**Cuándo:** Crear un recurso donde el frontend puede reintentar si hay fallo de red (ej: enviar mensaje, crear club). El `client_uuid` garantiza que si se envía la misma petición dos veces, no se duplica.
+
+```php
+public function store(StoreChannelMessageRequest $request, ClubChannel $channel): JsonResponse
+{
+    $validated = $request->validated();
+
+    $message = ChannelMessage::firstOrCreate(
+        [   // CONDICIÓN: si ya existe un registro con estos campos, lo devuelve
+            'club_channel_uuid' => $channel->uuid,
+            'client_uuid' => $validated['client_uuid'],
+        ],
+        [   // VALORES: si NO existe, crea uno nuevo con estos campos
+            'sender_uuid' => $request->user()->uuid,
+            'content' => $validated['content'],
+            'parent_message_uuid' => $validated['parent_message_uuid'] ?? null,
+        ]
+    );
+
+    $message->load('sender');
+
+    // Si el mensaje ya existía → 200. Si es nuevo → 201
+    $status = $message->wasRecentlyCreated ? 201 : 200;
+
+    return response()->json([
+        'status' => 'success',
+        'data' => new MessageResource($message),
+    ], $status);
+}
+```
+
+**Sintaxis clave:**
+- `firstOrCreate([condición], [valores])` → Laravel busca primero. Si encuentra, lo devuelve. Si no, lo crea con los valores.
+- `$message->wasRecentlyCreated` → boolean que dice si `firstOrCreate` acaba de crear el registro o lo encontró existente
+- `$status = $message->wasRecentlyCreated ? 201 : 200` → 201 si es nuevo, 200 si ya existía
+- Los campos que forman parte de la condición de unicidad (como `client_uuid`) van en el **primer array**, NO en los valores
+
+---
+
+### Patrón 4 — Actualización (`update`)
+
+**Cuándo:** Modificar campos de un recurso existente.
+
+```php
+public function update(UpdateClubRequest $request, Club $club): JsonResponse
+{
+    Gate::authorize('update', $club); // verificar permisos antes de tocar la BD
+
+    $validated = $request->validated(); // solo los campos que envió el frontend
+    $club->update($validated);          // Eloquent solo actualiza los campos presentes
+    $club->load('clubOwner');           // recargar relaciones para el Resource
+
+    return response()->json([
+        'status' => 'success',
+        'data' => new ClubResource($club),
+    ]);
+}
+```
+
+**Sintaxis clave:**
+- `Gate::authorize('update', $club)` → lanza 403 si el usuario no tiene permisos. SIEMPRE antes de modificar datos
+- `$request->validated()` con Form Requests que usan regla `sometimes` → solo devuelve los campos que el frontend envió, los ausentes se ignoran
+- `$club->update($validated)` → Eloquent solo actualiza los campos presentes en `$validated`, no toca los demás
+- Código HTTP 200 (por defecto) — NO 200 explícito porque es el valor por defecto
+
+---
+
+### Patrón 5 — Eliminación (`destroy`)
+
+**Cuándo:** Eliminar un recurso.
+
+```php
+public function destroy(Club $club): Response
+{
+    Gate::authorize('delete', $club);
+    $club->delete(); // soft delete si el modelo usa SoftDeletes
+
+    return response()->noContent(); // 204 sin body
+}
+```
+
+**Sintaxis clave:**
+- Tipo de retorno `Response` (NO `JsonResponse`) — porque no hay body
+- `response()->noContent()` → devuelve HTTP 204 sin cuerpo de respuesta
+- `$club->delete()` → si el modelo tiene `SoftDeletes`, hace soft delete. Si no, elimina definitivamente
+- `Gate::authorize()` siempre antes de la acción destructiva
+
+---
+
+### Patrón 6 — Lista paginada por cursor (`index` con scroll infinito)
+
+**Cuándo:** El frontend consume listas con scroll infinito (`useInfiniteQuery`). Necesita paginación por cursor, NO offset.
+
+```php
+public function index(Request $request, Club $club): JsonResponse
+{
+    $members = ClubMember::where('club_uuid', $club->uuid)
+        ->with(['user', 'roles'])           // siempre cargar relaciones aquí
+        ->orderBy('created_at', 'asc')      // orden estable para el cursor
+        ->cursorPaginate(15);               // Laravel lee ?cursor de la URL automáticamente
+
+    return response()->json([
+        'data' => ClubMemberResource::collection($members->items()),
+        'meta' => [
+            'next_cursor' => $members->nextCursor()?->encode(),
+            'per_page'    => $members->perPage(),
+        ],
+    ]);
+}
+```
+
+**Sintaxis clave:**
+- `cursorPaginate(15)` → Laravel hace toda la magia: lee `?cursor` de la URL, genera la consulta WHERE, y calcula el siguiente cursor automáticamente
+- `$members->items()` → devuelve solo los elementos de la página actual (array plano)
+- `$members->nextCursor()?->encode()` → siguiente cursor para el frontend, `null` si no hay más páginas. El `?->` es null-safe operator: si nextCursor devuelve null, no llama encode() y devuelve null
+- `$members->perPage()` → devuelve el tamaño de página configurado
+- `Resource::collection($members->items())` → para arrays, NO `new Resource()` que es para objeto individual
+- La respuesta usa `{data, meta}` (SIN `status`), eso es intencional — las listas paginadas tienen su propio formato
+
+**ATENCIÓN: `cursorPaginate()`**
+
+`cursorPaginate()` funciona para listas normales (miembros, notificaciones, etc.). Para mensajes de chat con scroll invertido (los más nuevos arriba), TAMBIÉN funciona — solo hay que agregar `orderBy('created_at', 'desc')` y Laravel hace el WHERE automáticamente:
+
+```php
+// Mensajes de chat — mismo patrón, solo cambia el orderBy
+$messages = ChannelMessage::where('club_channel_uuid', $channel->uuid)
+    ->with('sender')
+    ->orderBy('created_at', 'desc')
+    ->cursorPaginate($limit);
+```
+
+---
+
+### Patrón 7 — Autenticación (`login`, `register`, `logout`)
+
+**Cuándo:** Solo para AuthController. Estos métodos NO siguen los patrones anteriores porque manejan tokens, no recursos CRUD.
+
+```php
+// register: crear usuario + devolver token
+public function register(StoreUserRequest $request): JsonResponse
+{
+    $validated = $request->validated();
+
+    $user = User::create([
+        'username'   => $validated['username'],
+        'user_tag'   => $validated['user_tag'],
+        'first_name' => $validated['first_name'],
+        'last_name'  => $validated['last_name'],
+        'email'      => $validated['email'],
+        'password'   => Hash::make($validated['password']),
+    ]);
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'user' => new UserResource($user),
+            'token' => $token,
+        ],
+    ], 201);
+}
+
+// login: verificar credenciales + devolver token
+public function login(LoginRequest $request): JsonResponse
+{
+    $request->authenticate(); // el FormRequest verifica email+password
+
+    /** @var \App\Models\User $user */
+    $user = $request->user();
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'user' => new UserResource($user),
+            'token' => $token,
+        ],
+    ], 200);
+}
+
+// logout: revocar el token actual
+public function logout(Request $request): JsonResponse
+{
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => null,
+    ], 200);
+}
+```
+
+**Sintaxis clave:**
+- `$request->authenticate()` → método especial del LoginRequest que intenta Auth::attempt. Si falla, lanza 422 AUTOMÁTICAMENTE y el controller no se ejecuta
+- `Hash::make()` → hashea la contraseña antes de guardar (NUNCA guardar passwords en texto plano)
+- `$user->createToken('auth_token')->plainTextToken` → Sanctum crea el token y lo devuelve en texto plano (solo se ve una vez)
+- `$request->user()->currentAccessToken()->delete()` → elimina SOLO el token actual, NO todos los del usuario
+- `data` puede ser `null` (logout) o contener múltiples campos (login/register)
+
+---
+
+## Mapa rápido: ¿Qué patrón usa cada método?
+
+| Si tu método... | Patrón | Código HTTP | Tipo de respuesta |
+|---|---|---|---|
+| Devuelve un objeto por UUID | 1 (show) | 200 | `{status, data}` |
+| Devuelve el usuario autenticado | 1 (me) | 200 | `{status, data}` |
+| Crea un recurso simple (sin riesgo duplicado) | 2 (store simple) | 201 | `{status, data}` |
+| Crea un recurso con idempotencia (client_uuid) | 3 (firstOrCreate) | 201 o 200 | `{status, data}` |
+| Modifica un recurso existente | 4 (update) | 200 | `{status, data}` |
+| Elimina un recurso | 5 (destroy) | 204 | sin body |
+| Lista con paginación por cursor | 6 (cursorPaginate) | 200 | `{data, meta}` |
+| Login / Register / Logout | 7 (auth) | 200 / 201 | `{status, data}` |
+
+---
+
+## ¿Qué Controllers necesita Vyntra?
 
 | Controller | Responsabilidad Principal | Métodos Necesarios |
 |---|---|---|
-| `AuthController` | Login, Logout, Registro | `register()`, `login()`, `logout()` |
-| `UserController` | Perfil del usuario, sesiones activas, amistades | `me()`, `show()`, `updateProfile()`, `sessions()` |
-| `ClubController` | CRUD de clubes | `index()`, `show()`, `store()`, `update()`, `destroy()` |
-| `ClubMemberController` | Listar miembros, membresías del club, unirse/salir | `index()`, `show()`, `store()`, `destroy()` |
-| `ClubMemberRoleController` | Asignar y desasignar roles a miembros del club | `store()` (assignRole) |
-| `ClubCategoryController` | CRUD de categorías dentro de un club | `index()`, `store()`, `update()`, `destroy()` |
-| `ClubChannelController` | CRUD de canales dentro de una categoría/club | `index()`, `store()`, `update()`, `destroy()` |
-| `ClubRoleController` | CRUD de roles dentro del club | `index()`, `store()`, `update()`, `destroy()` |
-| `ChannelMessageController` | Enviar y paginar mensajes de canal (cursor) | `index()`, `store()` |
-| `DmConversationController` | Crear y listar conversaciones privadas | `index()`, `show()`, `store()` |
-| `DmMessageController` | Enviar y paginar mensajes directos (cursor) | `index()`, `store()` |
-| `NotificationController` | Listar notificaciones y marcarlas como leídas | `index()`, `markAsRead()` |
-| `FriendshipController` | Enviar, listar, aceptar y rechazar solicitudes | `index()` (friends), `pending()` (requests), `respond()` |
-| `ExploreController` | Obtener datos para la vista de exploración | `index()` |
-| `SearchController` | Búsqueda global de clubes y usuarios | `index()` |
+| `AuthController` | Login, Logout, Registro | `register()` (7), `login()` (7), `logout()` (7) |
+| `UserController` | Perfil del usuario, sesiones | `me()` (1), `show()` (1), `updateProfile()` (4), `sessions()` (1) |
+| `ClubController` | CRUD de clubes | `index()` (6), `show()` (1), `store()` (3), `update()` (4), `destroy()` (5) |
+| `ClubMemberController` | Miembros de club | `index()` (6), `store()` (2), `destroy()` (5) |
+| `ClubMemberRoleController` | Asignar roles | `store()` (2) |
+| `ClubCategoryController` | CRUD categorías | `index()` (6), `store()` (3), `update()` (4), `destroy()` (5) |
+| `ClubChannelController` | CRUD canales | `index()` (6), `store()` (3), `update()` (4), `destroy()` (5) |
+| `ClubRoleController` | CRUD roles | `index()` (6), `store()` (3), `update()` (4), `destroy()` (5) |
+| `ChannelMessageController` | Mensajes de canal | `index()` (6), `store()` (3) |
+| `DmConversationController` | Conversaciones DM | `index()` (6), `show()` (1), `store()` (3) |
+| `DmMessageController` | Mensajes DM | `index()` (6), `store()` (3) |
+| `NotificationController` | Notificaciones | `index()` (6), `markAsRead()` (4) |
+| `FriendshipController` | Amistades | `index()` (6), `pending()` (6), `respond()` (4) |
+| `ExploreController` | Vista de exploración | `index()` (6) |
+| `SearchController` | Búsqueda global | `index()` (6) |
+
+> Los números entre paréntesis son los patrones de esta guía. Ej: `store()` (3) = Patrón 3 (firstOrCreate).
 
 ---
 
 ## Checklist de Implementación
 
 ### 1. Generar los archivos vacíos con Artisan
-- [ ] Ejecutar los comandos de generación:
+- [ ] Ejecutar los comandos:
   ```bash
   php artisan make:controller AuthController
   php artisan make:controller UserController
@@ -56,146 +341,79 @@ Basado en el `api_contract.md`, el `api_requests_manifest.md` y la arquitectura 
 
 ---
 
-### 2. Estructura interna de cada método (Patrón obligatorio)
+### 2. Firmas de método y parámetros
 
-Todos los métodos de un Controller deben seguir este patrón sin excepción:
+Cada método recibe parámetros diferentes según lo que necesita. Aquí están las firmas correctas:
 
 ```php
-public function store(StoreMessageRequest $request, ClubChannel $channel): JsonResponse
-{
-    // 1. Obtener datos ya validados del Form Request (NO validar aquí)
-    $validated = $request->validated();
+// Métodos que leen datos (GET) — usan Request para query params
+public function index(Request $request, Club $club): JsonResponse
+public function me(Request $request): JsonResponse
 
-    // 2. Usar el Modelo para interactuar con la BD
-    $message = ChannelMessage::create([
-        ...$validated,
-        'club_channel_uuid' => $channel->uuid,
-        'sender_uuid' => $request->user()->uuid,
-    ]);
+// Métodos que reciben datos por UUID en la URL — Route Model Binding
+public function show(Club $club): JsonResponse
 
-    // 3. Devolver la respuesta usando un API Resource (NUNCA json() directo)
-    return response()->json(
-        new MessageResource($message),
-        201
-    );
-}
-```
+// Métodos que modifican datos (POST/PUT/PATCH) — usan FormRequest
+public function store(StoreClubRequest $request): JsonResponse
+public function store(StoreChannelMessageRequest $request, ClubChannel $channel): JsonResponse
+public function update(UpdateClubRequest $request, Club $club): JsonResponse
 
----
+// Métodos que eliminan — solo necesitan el modelo
+public function destroy(Club $club): Response  // NOTA: Response, no JsonResponse
 
-### 3. AuthController (Prioridad Alta — se implementa primero)
-
-El `AuthController` es el más crítico porque sin autenticación, ninguna otra ruta funciona.
-
-**Métodos requeridos:**
-- [ ] `register(StoreUserRequest $request)` → Crea usuario + devuelve token
-- [ ] `login(LoginRequest $request)` → Verifica credenciales + devuelve token
-- [ ] `logout(Request $request)` → Revoca el token actual del usuario
-
-**Lógica de login usando Sanctum:**
-```php
+// Métodos de autenticación — FormRequest especial
 public function login(LoginRequest $request): JsonResponse
-{
-    // 1. Delegar la validación e intento de autenticación al Form Request
-    $request->authenticate();
-
-    // 2. Obtener el usuario autenticado (si fallara, el Request ya lanzó la excepción)
-    $user = Auth::user();
-
-    // 3. Crear un token de Sanctum para este usuario
-    $token = $user->createToken('auth_token')->plainTextToken;
-
-    // 4. Devolver el token al frontend
-    return response()->json([
-        'access_token' => $token,
-        'token_type' => 'Bearer',
-        'user' => new UserResource($user),
-    ]);
-}
+public function logout(Request $request): JsonResponse
 ```
+
+**Nota sobre tipos de retorno:**
+- `JsonResponse` → para todos los métodos que devuelven JSON
+- `Response` → solo para `destroy()` que devuelve `response()->noContent()` (204 sin body)
 
 ---
 
-### 4. ChannelMessageController (Prioridad Alta — lógica compleja)
+### 3. Formato de respuesta: Standard Envelope
 
-Este Controller implementa la paginación por cursor obligatoria definida en las reglas de escalabilidad.
+Todas las respuestas exitosas usan uno de estos dos formatos:
 
-**Métodos requeridos:**
-- [ ] `index(ClubChannel $channel, Request $request)` → Lista mensajes con cursor
-- [ ] `store(StoreMessageRequest $request, ClubChannel $channel)` → Envía mensaje
-
-**Lógica del cursor en `index`:**
+**Objeto individual (show, store, update, me, login, register, logout):**
 ```php
-public function index(ClubChannel $channel, Request $request): JsonResponse
-{
-    $cursor = $request->query('cursor'); // UUID del mensaje más viejo que el usuario tiene en pantalla
-
-    $query = ChannelMessage::where('club_channel_uuid', $channel->uuid)
-        ->with('sender') // Carga el usuario remitente en la misma consulta (evita N+1)
-        ->orderBy('created_at', 'desc') // Los más nuevos primero (arquitectura invertida)
-        ->limit(50);
-
-    // Si hay cursor, continuar desde ese punto
-    if ($cursor) {
-        $cursorMessage = ChannelMessage::findOrFail($cursor);
-        $query->where('created_at', '<', $cursorMessage->created_at);
-    }
-
-    $messages = $query->get();
-
-    return response()->json([
-        'data' => MessageResource::collection($messages),
-        'meta' => [
-            'next_cursor' => $messages->count() === 50 ? $messages->last()->uuid : null,
-            'per_page' => 50,
-        ],
-    ]);
-}
+return response()->json([
+    'status' => 'success',
+    'data' => new ClubResource($club),
+], 201);
 ```
 
-> [!CAUTION]
-> Nunca usar `->paginate()` estándar de Laravel para mensajes de chat. Usa siempre la paginación por cursor manual como se muestra arriba. Ver `docs/architecture/database_scalability_rules.md` para entender el por qué.
-
----
-
-### 5. Listados Estándar y Paginación Infinita (cursorPaginate)
-
-En el frontend (Next.js), existen múltiples interfaces que consumen listas mediante *Scroll Infinito* (`useInfiniteQuery`). Esto requiere **paginación por cursor**. 
-
-Además de los mensajes de chat, los siguientes controladores **deben** implementar paginación por cursor en sus métodos `index()`:
-- `DmConversationController` (Lista de chats abiertos)
-- `FriendshipController` (Lista de amigos y solicitudes)
-- `ClubMemberController` (Lista de miembros de un club)
-- `NotificationController` (Notificaciones)
-- `SearchController` (Búsqueda global)
-
-A diferencia de los mensajes de chat (que requieren lógica manual invertida), para estas listas estándar **Laravel ofrece el método nativo `cursorPaginate()`**, que simplifica todo el trabajo manteniendo la escalabilidad:
-
+**Lista paginada (index):**
 ```php
-public function index(Club $club): JsonResponse
-{
-    // cursorPaginate(15) hace toda la magia: lee el ?cursor de la URL y arma la consulta
-    $members = $club->members()->cursorPaginate(15);
-
-    return response()->json([
-        'data' => ClubMemberResource::collection($members->items()),
-        'meta' => [
-            'next_cursor' => $members->nextCursor()?->encode(), // Laravel formatea el cursor
-            'per_page'    => $members->perPage(),
-        ],
-    ]);
-}
+return response()->json([
+    'data' => ClubMemberResource::collection($members->items()),
+    'meta' => [
+        'next_cursor' => $members->nextCursor()?->encode(),
+        'per_page'    => $members->perPage(),
+    ],
+]);
 ```
+
+**Eliminación (destroy):**
+```php
+return response()->noContent(); // 204 sin body
+```
+
+> La diferencia es intencional: los objetos llevan `status` + `data`, las listas llevan `data` + `meta`. No mezclar.
 
 ---
 
-### 6. Reglas generales de todos los Controllers
+### 4. Reglas generales
 
 - [ ] Nunca escribir SQL en bruto (`DB::select("SELECT...")`) dentro de un Controller
 - [ ] Nunca usar `response()->json(['data' => $model->toArray()])` — usar siempre API Resources
-- [ ] Usar siempre inyección de dependencias en los parámetros del método (Route Model Binding)
-- [ ] Manejar errores con `try/catch` solo cuando el error es recuperable (ej: transacciones)
-- [ ] Retornar el código HTTP correcto: `200` lectura, `201` creación, `204` eliminación sin body
+- [ ] Usar siempre Route Model Binding en los parámetros (`Club $club` en vez de `$id`)
+- [ ] Usar `Gate::authorize()` antes de modificar o eliminar datos
+- [ ] Cargar relaciones con `->with()` o `->load()` ANTES de pasar al Resource
+- [ ] Retornar el código HTTP correcto: `200` lectura/actualización, `201` creación, `204` eliminación sin body
+- [ ] Para idempotencia: usar `firstOrCreate()` con `client_uuid`, NO `try/catch` con `QueryException`
+- [ ] Para paginación: usar `cursorPaginate()`, NO `paginate()` estándar
 
 ---
 
@@ -204,11 +422,12 @@ public function index(Club $club): JsonResponse
 ```
 ✅ 15 Controllers creados en app/Http/Controllers/
 ✅ AuthController funcional con login/register/logout
-✅ ChannelMessageController y DmMessageController con paginación por cursor manual
-✅ Todos los métodos siguen el patrón: Request → Model → Resource
+✅ Todos los métodos usan el patrón correcto según la tabla de arriba
+✅ Todas las respuestas siguen Standard Envelope
+✅ cursorPaginate() en todas las listas, paginate() en NINGUNA
 ```
 
 ---
 
 ## Siguiente paso
-➡️ [05_routes_guide.md](./05_routes_guide.md)
+➡️ [05_middleware_policies_guide.md](./05_middleware_policies_guide.md)

@@ -29,6 +29,7 @@ sequenceDiagram
     participant FE as 🖥️ Frontend
     participant RT as 🚪 Ruta
     participant MW as 🛡️ Middleware
+    participant PO as 🔑 Policy
     participant CT as 🧠 Controller
     participant MD as 📦 Model
     participant DB as 🗄️ PostgreSQL
@@ -36,7 +37,8 @@ sequenceDiagram
 
     FE->>RT: GET /api/channels/abc-123/messages
     RT->>MW: ¿Está autenticado?
-    MW->>CT: ✅ Sí, pasa al Controller
+    MW->>PO: ✅ Sí. ¿Tiene permiso para ver este canal?
+    PO->>CT: ✅ Sí, pasa al Controller
     CT->>MD: "Dame los mensajes del canal abc-123"
     MD->>DB: SELECT * FROM channel_messages WHERE club_channel_uuid = 'abc-123'
     DB-->>MD: [fila1, fila2, fila3, ...]
@@ -46,7 +48,7 @@ sequenceDiagram
 ```
 
 > [!NOTE]
-> En una lectura (GET), el **Form Request NO participa** porque no hay datos del usuario que validar. Solo se consulta información existente.
+> En una lectura (GET), el **Form Request NO participa** porque no hay datos del usuario que validar. Solo se consulta información existente. Sin embargo, la **Policy SÍ participa** porque incluso para leer datos necesitas verificar que el usuario tenga permiso para ver ese recurso.
 
 ---
 
@@ -57,6 +59,7 @@ sequenceDiagram
     participant FE as 🖥️ Frontend
     participant RT as 🚪 Ruta
     participant MW as 🛡️ Middleware
+    participant PO as 🔑 Policy
     participant FR as 📋 Form Request
     participant CT as 🧠 Controller
     participant MD as 📦 Model
@@ -65,7 +68,13 @@ sequenceDiagram
 
     FE->>RT: POST /api/channels/abc-123/messages {content: "Hola!", client_uuid: "xyz"}
     RT->>MW: ¿Está autenticado?
-    MW->>FR: ✅ Sí. Ahora valida los datos del body.
+    MW->>PO: ✅ Sí. ¿Tiene permiso para enviar en este canal?
+    
+    alt Sin permiso
+        PO-->>FE: ❌ 403: {status: "error", message: "No eres miembro de este club."}
+    end
+    
+    PO->>FR: ✅ Sí. Ahora valida los datos del body.
     
     alt Datos inválidos
         FR-->>FE: ❌ 422: {errors: {content: ["El contenido es obligatorio"]}}
@@ -81,7 +90,7 @@ sequenceDiagram
 ```
 
 > [!IMPORTANT]
-> En una escritura (POST, PUT, DELETE), el **Form Request SÍ participa** como guardián. Es la capa que protege tu base de datos de inyecciones SQL, datos vacíos o formatos incorrectos.
+> En una escritura (POST, PUT, DELETE), tanto la **Policy** como el **Form Request** participan, en ese orden. Primero la **Policy** verifica permisos (¿puede este usuario hacer esto?). Luego el **Form Request** valida los datos (¿los campos son correctos?). El Controller nunca recibe una petición que no haya pasado ambas capas.
 
 ---
 
@@ -102,6 +111,7 @@ Cada capa del diagrama corresponde a una carpeta específica dentro de tu proyec
 |---|---|---|
 | **Ruta** | Conectar una URL con un Controller | Validar datos, consultar la BD |
 | **Middleware** | Verificar autenticación, limitar peticiones | Lógica de negocio, formatear JSON |
+| **Policy** | Verificar permisos del usuario sobre un recurso específico | Validar datos, guardar en BD |
 | **Form Request** | Validar y sanitizar los datos entrantes | Guardar en BD, devolver respuestas |
 | **Controller** | Coordinar el flujo: recibir, procesar, responder | Escribir SQL directo, formatear JSON a mano |
 | **Model** | Definir relaciones, reglas de datos, consultas SQL | Validar datos del frontend, devolver respuestas HTTP |

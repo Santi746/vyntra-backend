@@ -37,7 +37,7 @@ class StoreClubRequest extends FormRequest
             'name' => ['required', 'string', 'max:100'],
             'description' => ['sometimes', 'string', 'max:500', 'nullable'],
             'category_tag' => ['required', 'string', 'max:50'],
-            'logo_url' => ['sometimes', 'url', 'nullable'],
+            'avatar_url' => ['sometimes', 'url', 'nullable'],
             'banner_url' => ['sometimes', 'url', 'nullable'],
         ];
     }

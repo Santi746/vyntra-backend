@@ -33,7 +33,9 @@ class AssignClubRoleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'client_uuid' => ['sometimes', 'uuid'], // Opcional (sometimes) porque la asociación es una relación pivot Many-to-Many idempotente (sync) y no requiere deduplicación estricta
+            // client_uuid removido: la pivote 'club_member_roles' no tiene columna client_uuid;
+            // la deduplicación se garantiza mediante la restricción UNIQUE compuesta (club_member_uuid, role_uuid) de la migración.
+            'user_uuid' => ['required', 'uuid', 'exists:users,uuid'],
             'role_uuid' => ['required', 'uuid', 'exists:club_roles,uuid'],
         ];
     }

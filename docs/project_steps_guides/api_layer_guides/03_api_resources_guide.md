@@ -21,6 +21,7 @@ Sin API Resources, si renombras una columna en PostgreSQL (ej: `cover_image_url`
 | `ClubResource` | `Club` | ClubController |
 | `ClubCategoryResource` | `ClubCategory` | ClubCategoryController |
 | `ClubChannelResource` | `ClubChannel` | ClubChannelController |
+| `ClubMemberResource` | `ClubMember` | ClubMemberController |
 | `MessageResource` | `ChannelMessage` | ChannelMessageController |
 | `DmConversationResource` | `DmConversation` | DmConversationController |
 | `DmMessageResource` | `DmMessage` | DmMessageController |
@@ -40,6 +41,7 @@ Sin API Resources, si renombras una columna en PostgreSQL (ej: `cover_image_url`
   php artisan make:resource ClubResource
   php artisan make:resource ClubCategoryResource
   php artisan make:resource ClubChannelResource
+  php artisan make:resource ClubMemberResource
   php artisan make:resource MessageResource
   php artisan make:resource DmConversationResource
   php artisan make:resource DmMessageResource

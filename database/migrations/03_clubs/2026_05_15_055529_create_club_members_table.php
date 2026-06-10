@@ -16,6 +16,9 @@ return new class extends Migration
             $table->foreignUuid('user_uuid')->constrained('users', 'uuid');
             $table->foreignUuid('club_uuid')->constrained('clubs', 'uuid');
             $table->timestamp('joined_at')->useCurrent();
+            // client_uuid para deduplicación de eventos join/leave en tiempo real
+            $table->uuid('client_uuid')->nullable();
+            $table->unique(['user_uuid', 'client_uuid']);
             $table->timestamps();
             $table->softDeletes();
 

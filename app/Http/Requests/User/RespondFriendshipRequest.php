@@ -37,4 +37,19 @@ class RespondFriendshipRequest extends FormRequest
             'action' => ['required', 'string', 'in:accept,decline'], // Sincronizado con el Frontend (Next.js) que envía "decline" para rechazar.
         ];
     }
+
+    /**
+     * Normaliza los valores del campo `action` antes de validar.
+     *
+     * Acepta tanto 'reject' (sinónimo legacy del frontend mock) como 'decline' (canónico de la API)
+     * y los mapea a 'decline' para mantener una única representación interna del estado 'declined'.
+     *
+     * @return void
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('action') && $this->input('action') === 'reject') {
+            $this->merge(['action' => 'decline']);
+        }
+    }
 }

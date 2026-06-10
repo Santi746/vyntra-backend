@@ -4,6 +4,8 @@ namespace App\Http\Requests\User;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Contracts\Validation\Validator;
 
 /**
  * UpdateUserRequest
@@ -27,6 +29,22 @@ class UpdateUserRequest extends FormRequest
     }
 
     /**
+     * Prepara los datos antes de validar.
+     *
+     * Mapea new_password a password para que el modelo lo hashee automáticamente.
+     *
+     * @return void
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('new_password')) {
+            $this->merge([
+                'password' => $this->input('new_password'),
+            ]);
+        }
+    }
+
+    /**
      * Obtiene las reglas de validación que se aplican a la petición.
      * 
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -45,6 +63,25 @@ class UpdateUserRequest extends FormRequest
             'location' => ['sometimes', 'string', 'max:100', 'nullable'],
             'current_password' => ['required_with:new_password', 'string'],
             'new_password' => ['sometimes', 'string', 'min:8'],
+            'password' => ['sometimes', 'string'],
+        ];
+    }
+
+    /**
+     * Validaciones después de las reglas estándar.
+     *
+     * Verifica que la contraseña actual sea correcta antes de permitir el cambio.
+     *
+     * @return array<int, \Closure>
+     */
+    public function after(): array
+    {
+        return [
+            function (\Illuminate\Validation\Validator $validator) {
+                if ($this->has('current_password') && !Hash::check($this->current_password, $this->user()->password)) {
+                    $validator->errors()->add('current_password', 'La contraseña actual no es correcta.');
+                }
+            },
         ];
     }
 }

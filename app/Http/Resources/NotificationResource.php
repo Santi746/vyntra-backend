@@ -5,6 +5,15 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * Resource para formatear una Notificación en JSON.
+ *
+ * El campo `data` es un JSON opaco que el frontend interpreta según el `type`.
+ *
+ * @package App\Http\Resources
+ *
+ * @property-read \App\Models\Notification $resource
+ */
 class NotificationResource extends JsonResource
 {
     public function toArray(Request $request): array

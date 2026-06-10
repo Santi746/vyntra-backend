@@ -34,6 +34,7 @@ class StoreClubChannelRequest extends FormRequest
     {
         return [
             'client_uuid' => ['required', 'uuid'], // Requerido para deduplicar la creación en tiempo real
+            'category_uuid' => ['required', 'uuid', 'exists:club_categories,uuid'],
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', 'string', 'in:text,voice'],
             'is_private' => ['sometimes', 'boolean'],
