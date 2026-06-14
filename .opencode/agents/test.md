@@ -1,7 +1,7 @@
 ---
 description: "Genera tests para controllers, models y features del backend Laravel."
 mode: subagent
-model: opencode-go/minimax-m2.7
+model: opencode/nemotron-3-ultra-free
 permission:
   edit: allow
 ---

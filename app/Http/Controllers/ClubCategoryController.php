@@ -2,42 +2,42 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Club\StoreClubCategoryRequest;
+use App\Http\Requests\Club\UpdateClubCategoryRequest;
+use App\Http\Resources\ClubCategoryResource;
 use App\Models\Club;
 use App\Models\ClubCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Resources\ClubCategoryResource;
-use App\Http\Requests\Club\StoreClubCategoryRequest;
-use App\Http\Requests\Club\UpdateClubCategoryRequest;
 
 /**
- * Controlador de categorías de club.
- *
  * CRUD de categorías que agrupan canales dentro de un club.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\Club\StoreClubCategoryRequest $request, \App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse update(\App\Http\Requests\Club\UpdateClubCategoryRequest $request, \App\Models\Club $club)
- * @method \Illuminate\Http\Response destroy(\App\Models\Club $club, \App\Models\ClubCategory $category)
+ * Filtra categorías privadas según permiso VIEW_CHANNELS.
  */
 class ClubCategoryController extends Controller
 {
-    /**
-     * Lista las categorías de un club con sus canales.
-     *
-     * @param Club $club
-     * @return JsonResponse
-     */
     public function index(Club $club): JsonResponse
     {
-        $categories = ClubCategory::where('club_uuid', $club->uuid)
-            ->with('channels')
-            ->orderBy('sort_order', 'asc')
-            ->cursorPaginate(15);
+        Gate::authorize('viewAny', [ClubCategory::class, $club]);
+
+        $canSeePrivate = Gate::allows('viewPrivateChannels', $club);
+
+        $categoriesQuery = ClubCategory::where('club_uuid', $club->uuid)
+            ->with(['channels' => function ($q) use ($canSeePrivate) {
+                if (! $canSeePrivate) {
+                    $q->where('is_private', false);
+                }
+                $q->orderBy('sort_order');
+            }])
+            ->orderBy('sort_order', 'asc');
+
+        if (! $canSeePrivate) {
+            $categoriesQuery->where('is_private', false);
+        }
+
+        $categories = $categoriesQuery->cursorPaginate(15);
 
         return response()->json([
             'data' => ClubCategoryResource::collection($categories->items()),
@@ -51,12 +51,13 @@ class ClubCategoryController extends Controller
     /**
      * Crea una categoría en el club (idempotente).
      *
-     * @param StoreClubCategoryRequest $request Validación de la categoría
-     * @param Club $club
+     * @param  StoreClubCategoryRequest  $request  Validación de la categoría
      * @return JsonResponse 201 si se creó, 200 si ya existía
      */
     public function store(StoreClubCategoryRequest $request, Club $club): JsonResponse
     {
+        Gate::authorize('create', [ClubCategory::class, $club]);
+
         $validated = $request->validated();
 
         $category = ClubCategory::firstOrCreate(
@@ -79,9 +80,7 @@ class ClubCategoryController extends Controller
      *
      * El UUID se obtiene del body (campo `category_uuid`), no de la URL.
      *
-     * @param UpdateClubCategoryRequest $request Validación con category_uuid y campos a actualizar
-     * @param Club $club
-     * @return JsonResponse
+     * @param  UpdateClubCategoryRequest  $request  Validación con category_uuid y campos a actualizar
      */
     public function update(UpdateClubCategoryRequest $request, Club $club): JsonResponse
     {
@@ -104,9 +103,7 @@ class ClubCategoryController extends Controller
     /**
      * Elimina una categoría (soft delete).
      *
-     * @param Club $club
-     * @param ClubCategory $category Categoría a eliminar
-     * @return Response
+     * @param  ClubCategory  $category  Categoría a eliminar
      */
     public function destroy(Club $club, ClubCategory $category): Response
     {

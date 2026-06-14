@@ -24,8 +24,8 @@ return new class extends Migration
 
             // Evitar miembros duplicados en el mismo club
             $table->unique(['user_uuid', 'club_uuid']);
-            
-            // Índice compuesto para paginación por cursor basada en tiempo 
+
+            // Índice compuesto para paginación por cursor basada en tiempo
             $table->index(['club_uuid', 'joined_at']);
         });
     }

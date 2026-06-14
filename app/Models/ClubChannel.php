@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Canal de chat o voz dentro de una categoría de club.
@@ -22,20 +23,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property int $sort_order Orden de visualización en la UI
  * @property bool $is_private Si el canal es privado
  * @property string|null $client_uuid UUID de deduplicación del frontend
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubChannel newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubChannel newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubChannel query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable(['category_uuid', 'name', 'description', 'type', 'sort_order', 'is_private', 'client_uuid'])]
 class ClubChannel extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'club_channels';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Un Canal pertenece a una única Categoría que lo agrupa.
@@ -50,7 +48,7 @@ class ClubChannel extends Model
     {
         return [
             'is_private' => 'boolean',
-            'sort_order' => 'integer'
+            'sort_order' => 'integer',
         ];
     }
 }

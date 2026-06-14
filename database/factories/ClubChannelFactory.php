@@ -20,7 +20,7 @@ class ClubChannelFactory extends Factory
             'sort_order' => fake()->numberBetween(0, 10),
             'is_private' => fake()->boolean(5), // 5% de probabilidad de ser privado
             'client_uuid' => fake()->uuid(),
-            
+
             // Relación con Categoría
             'category_uuid' => ClubCategory::factory(),
         ];

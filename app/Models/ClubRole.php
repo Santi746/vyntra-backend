@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Rol personalizado dentro de un club.
@@ -22,20 +23,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property int $sort_order Orden de jerarquía del rol
  * @property int $permissions Permisos en formato bitmask
  * @property string|null $client_uuid UUID de deduplicación del frontend
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubRole newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubRole newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubRole query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable(['club_uuid', 'name', 'color', 'is_fixed', 'sort_order', 'permissions', 'client_uuid'])]
 class ClubRole extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'club_roles';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Un Rol pertenece a un único Club.
@@ -48,7 +46,7 @@ class ClubRole extends Model
 
     // PERSPECTIVA: Un Rol puede estar asignado a muchos Miembros mediante una relación Muchos a Muchos.
     // TABLA PIVOTE: 'club_member_roles' (conecta role_uuid con club_member_uuid).
-    // SQL: SELECT club_members.* FROM club_members 
+    // SQL: SELECT club_members.* FROM club_members
     //      INNER JOIN club_member_roles ON club_member_roles.club_member_uuid = club_members.uuid
     //      WHERE club_member_roles.role_uuid = club_roles.uuid;
     public function members()

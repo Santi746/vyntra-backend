@@ -1,4 +1,5 @@
 <?php
+
 /* @noinspection ALL */
 // @formatter:off
 // phpcs:ignoreFile
@@ -14,9 +15,19 @@
  */
 
 namespace Illuminate\Support\Facades {
+    use Illuminate\Auth\AuthManager;
+    use Illuminate\Broadcasting\BroadcastManager;
+    use Illuminate\Cache\CacheManager;
+    use Illuminate\Database\DatabaseManager;
+    use Illuminate\Events\Dispatcher;
+    use Illuminate\Filesystem\FilesystemManager;
+    use Illuminate\Hashing\HashManager;
+    use Illuminate\Log\LogManager;
+    use Illuminate\Routing\ResponseFactory;
+    use Illuminate\Validation\Factory;
 
     /**
-     * @mixin \Illuminate\Auth\AuthManager
+     * @mixin AuthManager
      *
      * @method static \Illuminate\Contracts\Auth\Guard|\App\Models\User|null user() Obtiene el usuario autenticado de la solicitud actual. Retorna null si no hay sesión activa.
      * @method static bool check() Verifica si el usuario actual está autenticado (true = logueado).
@@ -38,7 +49,7 @@ namespace Illuminate\Support\Facades {
     class Auth {}
 
     /**
-     * @mixin \Illuminate\Validation\Factory
+     * @mixin Factory
      *
      * @method static \Illuminate\Validation\Validator make(array $data, array $rules, array $messages = [], array $customAttributes = []) Crea una instancia de Validador con las reglas especificadas.
      * @method static array validate(array $data, array $rules, array $messages = [], array $customAttributes = []) Valida datos contra reglas y lanza ValidationException si falla (útil en controladores).
@@ -49,7 +60,7 @@ namespace Illuminate\Support\Facades {
     class Validator {}
 
     /**
-     * @mixin \Illuminate\Hashing\HashManager
+     * @mixin HashManager
      *
      * @method static string make(string $value, array $options = []) Hashea un texto plano (contraseña). Usa Bcrypt por defecto.
      * @method static bool check(string $value, string $hashedValue, array $options = []) Verifica si un texto plano coincide con un hash almacenado.
@@ -61,7 +72,7 @@ namespace Illuminate\Support\Facades {
     class Hash {}
 
     /**
-     * @mixin \Illuminate\Cache\CacheManager
+     * @mixin CacheManager
      *
      * @method static mixed remember(string $key, \DateTimeInterface|\DateInterval|int $ttl, \Closure $callback) Recupera un valor del caché o lo almacena usando el callback si no existe.
      * @method static mixed rememberForever(string $key, \Closure $callback) Recupera o almacena un valor en caché sin expiración.
@@ -80,7 +91,7 @@ namespace Illuminate\Support\Facades {
     class Cache {}
 
     /**
-     * @mixin \Illuminate\Filesystem\FilesystemManager
+     * @mixin FilesystemManager
      *
      * @method static \Illuminate\Filesystem\FilesystemAdapter disk(string|null $name = null) Obtiene una instancia del disco de almacenamiento (local, s3, public, etc.).
      * @method static bool put(string $path, string|\Illuminate\Http\File|\Illuminate\Http\UploadedFile $contents, mixed $options = []) Almacena un archivo en la ruta especificada.
@@ -105,7 +116,7 @@ namespace Illuminate\Support\Facades {
     class Storage {}
 
     /**
-     * @mixin \Illuminate\Events\Dispatcher
+     * @mixin Dispatcher
      *
      * @method static mixed dispatch(object|string $event, mixed $payload = [], bool $halt = false) Despacha un evento, ejecutando todos sus listeners.
      * @method static void listen(string|\Closure $events, \Closure|string|null $listener = null) Registra un listener para uno o varios eventos.
@@ -120,7 +131,7 @@ namespace Illuminate\Support\Facades {
     class Event {}
 
     /**
-     * @mixin \Illuminate\Broadcasting\BroadcastManager
+     * @mixin BroadcastManager
      *
      * @method static mixed event(array|\Illuminate\Broadcasting\BroadcastEvent $event) Despacha un evento a los canales de broadcast (Reverb, Pusher, etc.).
      * @method static \Illuminate\Broadcasting\PendingBroadcast broadcast(mixed $event) Devuelve un PendingBroadcast para encadenar ->toOthers(), ->dontBroadcastToCurrentUser().
@@ -133,7 +144,7 @@ namespace Illuminate\Support\Facades {
     class Broadcast {}
 
     /**
-     * @mixin \Illuminate\Log\LogManager
+     * @mixin LogManager
      *
      * @method static void emergency(string $message, array $context = []) Registra un mensaje de log nivel EMERGENCIA (sistema inutilizable).
      * @method static void alert(string $message, array $context = []) Registra un mensaje de log nivel ALERTA (acción requerida inmediata).
@@ -152,7 +163,7 @@ namespace Illuminate\Support\Facades {
     class Log {}
 
     /**
-     * @mixin \Illuminate\Database\DatabaseManager
+     * @mixin DatabaseManager
      *
      * @method static \Illuminate\Database\Connection connection(string|null $name = null) Obtiene una conexión a la base de datos por su nombre (mysql, pgsql, sqlite, etc.).
      * @method static void beginTransaction() Inicia una transacción de base de datos. Todas las operaciones posteriores son temporales hasta commit/rollback.
@@ -177,7 +188,7 @@ namespace Illuminate\Support\Facades {
     class DB {}
 
     /**
-     * @mixin \Illuminate\Routing\ResponseFactory
+     * @mixin ResponseFactory
      *
      * @method static \Illuminate\Http\JsonResponse json(mixed $data = [], int $status = 200, array $headers = [], int $options = 0) Retorna una respuesta JSON. $options para JSON_UNESCAPED_UNICODE, etc.
      * @method static \Illuminate\Http\Response noContent(int $status = 204, array $headers = []) Retorna una respuesta vacía con código 204 (útil para DELETE).
@@ -201,7 +212,7 @@ namespace Illuminate\Support\Facades {
 namespace Illuminate\Routing {
 
     /**
-     * @mixin \Illuminate\Routing\RouteGroup
+     * @mixin RouteGroup
      *
      * @method static \Illuminate\Routing\Route get(string $uri, array|string|callable|null $action = null) Registra una ruta que responde a GET.
      * @method static \Illuminate\Routing\Route post(string $uri, array|string|callable|null $action = null) Registra una ruta que responde a POST.
@@ -234,7 +245,7 @@ namespace Illuminate\Routing {
 namespace Illuminate\Http {
 
     /**
-     * @mixin \Illuminate\Http\Request
+     * @mixin Request
      *
      * @method static \Illuminate\Validation\Validator|array validate(array $rules, ...$params) Valida la solicitud contra reglas. Lanza ValidationException si falla (redirección o respuesta JSON).
      * @method static mixed input(string|null $key = null, mixed $default = null) Obtiene un valor de entrada (query string + formulario).
@@ -274,9 +285,17 @@ namespace Illuminate\Http {
 }
 
 namespace Illuminate\Support\Facades {
+    use Illuminate\Bus\Dispatcher;
+    use Illuminate\Config\Repository;
+    use Illuminate\Encryption\Encrypter;
+    use Illuminate\Filesystem\Filesystem;
+    use Illuminate\Mail\Mailer;
+    use Illuminate\Notifications\ChannelManager;
+    use Illuminate\Queue\QueueManager;
+    use Illuminate\Redis\RedisManager;
 
     /**
-     * @mixin \Illuminate\Config\Repository
+     * @mixin Repository
      *
      * @method static mixed get(string $key, mixed $default = null) Obtiene un valor de configuración usando notación de punto ('app.name', 'database.connections.mysql.host').
      * @method static bool has(string $key) Verifica si una clave de configuración existe.
@@ -286,7 +305,7 @@ namespace Illuminate\Support\Facades {
     class Config {}
 
     /**
-     * @mixin \Illuminate\Encryption\Encrypter
+     * @mixin Encrypter
      *
      * @method static string encrypt(mixed $value, bool $serialize = true) Encripta un valor usando la clave APP_KEY.
      * @method static mixed decrypt(string $payload, bool $unserialize = true) Desencripta un payload previamente encriptado.
@@ -297,7 +316,7 @@ namespace Illuminate\Support\Facades {
     class Crypt {}
 
     /**
-     * @mixin \Illuminate\Mail\Mailer
+     * @mixin Mailer
      *
      * @method static \Illuminate\Mail\SentMessage|null to(\Illuminate\Contracts\Mail\Mailable|\Closure|string|array $users, string|null $name = null) Establece el destinatario "Para" del correo.
      * @method static \Illuminate\Mail\Mailable bcc(\Illuminate\Contracts\Mail\Mailable|\Closure|string|array $users, string|null $name = null) Establece el destinatario "CCO" del correo.
@@ -316,7 +335,7 @@ namespace Illuminate\Support\Facades {
     class Mail {}
 
     /**
-     * @mixin \Illuminate\Queue\QueueManager
+     * @mixin QueueManager
      *
      * @method static \Illuminate\Contracts\Queue\Job|null pop(string|null $queue = null) Extrae el siguiente trabajo de la cola especificada.
      * @method static mixed push(string|object $job, mixed $data = '', string|null $queue = null) Agrega un trabajo a la cola para procesamiento asíncrono.
@@ -336,7 +355,7 @@ namespace Illuminate\Support\Facades {
     class Queue {}
 
     /**
-     * @mixin \Illuminate\Bus\Dispatcher
+     * @mixin Dispatcher
      *
      * @method static mixed dispatch(mixed $command) Despacha un comando/job para ejecución inmediata (síncrona o encolada según configuración).
      * @method static mixed dispatchSync(mixed $command) Despacha un comando para ejecución síncrona inmediata (sin cola).
@@ -363,7 +382,7 @@ namespace Illuminate\Support\Facades {
     class Pipeline {}
 
     /**
-     * @mixin \Illuminate\Redis\RedisManager
+     * @mixin RedisManager
      *
      * @method static mixed command(string $method, array $parameters = []) Ejecuta un comando de Redis directamente (SET, GET, PUBLISH, SUBSCRIBE, etc).
      * @method static mixed connection(string|null $name = null) Obtiene una conexión Redis por su nombre (default, cache, etc.).
@@ -375,7 +394,7 @@ namespace Illuminate\Support\Facades {
     class Redis {}
 
     /**
-     * @mixin \Illuminate\Notifications\ChannelManager
+     * @mixin ChannelManager
      *
      * @method static void send(\Illuminate\Contracts\Notifications\ShouldQueue|\Illuminate\Contracts\Notifications\AnonymousNotifiable|\Illuminate\Contracts\Notifications\Notification $notifiables, \Illuminate\Contracts\Notifications\Notification $notification) Envía una notificación a uno o varios destinatarios.
      * @method static void sendNow(\Illuminate\Contracts\Notifications\ShouldQueue|\Illuminate\Contracts\Notifications\AnonymousNotifiable|\Illuminate\Contracts\Notifications\Notification $notifiables, \Illuminate\Contracts\Notifications\Notification $notification) Envía una notificación inmediatamente (sin cola).
@@ -391,7 +410,7 @@ namespace Illuminate\Support\Facades {
     class Notification {}
 
     /**
-     * @mixin \Illuminate\Filesystem\Filesystem
+     * @mixin Filesystem
      *
      * @method static bool exists(string $path) Verifica si un archivo existe en el sistema de archivos local.
      * @method static string get(string $path) Obtiene el contenido de un archivo.
@@ -426,7 +445,7 @@ namespace Illuminate\Support\Facades {
 namespace Illuminate\Auth\Access {
 
     /**
-     * @mixin \Illuminate\Auth\Access\Gate
+     * @mixin Gate
      *
      * @method static bool authorize(string $ability, array|mixed $arguments = []) Autoriza una habilidad. Lanza AuthorizationException si no tiene permiso.
      * @method static \Illuminate\Auth\Access\Response authorize(string $ability, array|mixed $arguments = []) Retorna una Response, útil cuando no quieres excepción automática.
@@ -450,7 +469,7 @@ namespace Illuminate\Auth\Access {
 namespace Illuminate\Support {
 
     /**
-     * @mixin \Illuminate\Support\Collection
+     * @mixin Collection
      *
      * @method static \Illuminate\Support\Collection all() Retorna el array subyacente de la colección.
      * @method static \Illuminate\Support\Collection average(string|null $callback = null) Alias de avg(). Calcula el promedio.
@@ -577,7 +596,7 @@ namespace Illuminate\Support {
     class Collection {}
 
     /**
-     * @mixin \Illuminate\Support\Stringable
+     * @mixin Stringable
      *
      * @method static \Illuminate\Support\Stringable after(mixed $search) Retorna el resto del string después de la primera aparición de $search.
      * @method static \Illuminate\Support\Stringable afterLast(mixed $search) Retorna el resto después de la última aparición.
@@ -662,7 +681,7 @@ namespace Illuminate\Support {
 namespace Illuminate\Http\Client {
 
     /**
-     * @mixin \Illuminate\Http\Client\Factory
+     * @mixin Factory
      *
      * @method static \Illuminate\Http\Client\PendingRequest baseUrl(string $url) Establece la URL base para todas las solicitudes.
      * @method static \Illuminate\Http\Client\PendingRequest withHeaders(array $headers) Agrega headers HTTP a la solicitud.

@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * Relación pivote entre un miembro y un rol en un club.
@@ -15,19 +16,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property string $uuid UUID único de la asignación (PK)
  * @property string $club_member_uuid UUID del miembro (FK)
  * @property string $role_uuid UUID del rol asignado (FK)
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubMemberRole newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubMemberRole newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubMemberRole query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 #[Fillable(['club_member_uuid', 'role_uuid'])]
 class ClubMemberRole extends Model
 {
-    use HasUuids, HasFactory;
+    use HasFactory, HasUuids;
 
     protected $table = 'club_member_roles';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Esta fila de la tabla pivote pertenece a un único Miembro del Club.

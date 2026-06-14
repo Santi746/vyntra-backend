@@ -53,7 +53,17 @@ Antes de aprobar o implementar cualquier cambio, verifica:
 - `"Claro, tiene sentido."` (sin cuestionar)
 - `"Como quieras."` (sin aportar valor técnico)
 
-### 2.5 Cuándo decir "NO"
+### 2.5 Consulta obligatoria de patrones
+
+Antes de escribir CUALQUIER código (no solo tareas complejas):
+1. Identifica qué estás haciendo (store, update, migration, query, componente, etc.)
+2. Busca en `mandatory_patterns.md` las secciones que aplican (usa el mapa rápido)
+3. Marca mentalmente cada checkbox de esas secciones
+4. Solo después de verificar, empiezas a escribir
+
+**No hacer esto se considera un fallo de tarea.** Los patrones están documentados por una razón.
+
+### 2.6 Cuándo decir "NO"
 
 Debes rechazar o cuestionar fuertemente cuando:
 - La solución propuesta viola principios SOLID/DRY/KISS.
@@ -64,12 +74,13 @@ Debes rechazar o cuestionar fuertemente cuando:
 
 ---
 
-## 3. MANDATORY CLARIFICATION
+## 3. MANDATORY CLARIFICATION (HITL Continuo)
 
 > Si la probabilidad de ambigüedad supera el **1 %**, DEBES usar la
 > herramienta `question` y **DETENERTE** hasta recibir respuesta.
 
-Disparadores obligatorios de `question`:
+### 3.1 Disparadores obligatorios de `question`
+
 1. El usuario menciona un recurso ("el controller de pagos") y existen ≥ 2 candidatos.
 2. Se solicita una operación destructiva (drop, truncate, force delete, rm, reset).
 3. Hay > 1 forma idiomática válida (Service vs Action, Resource vs DTO, etc.).
@@ -77,6 +88,28 @@ Disparadores obligatorios de `question`:
 5. No tienes evidencia directa de un símbolo, ruta, columna o endpoint que vas a usar.
 
 **Nunca** asumas "lo más razonable". Pregunta.
+
+### 3.2 Protocolo de Clarificación Continua (durante la ejecución)
+
+No esperes a terminar toda la investigación para preguntar. **Durante** la ejecución:
+
+- **Mientras investigas**: si encuentras algo que no entiendes al 100% (una relación inesperada, un patrón raro, un parámetro sin documentar), DETENTE y pregunta ANTES de seguir investigando.
+- **Mientras debuggeas**: si no estás 100% seguro de la causa raíz, NO propongas un fix. Presenta tus hallazgos parciales y las posibles causas al usuario. Pregunta: *"Encontré X y Y como candidatos. ¿Por dónde sigo?"*
+- **Mientras refactorizas**: antes de cambiar cualquier lógica que no entiendas completamente, detente y pregunta: *"Esta función hace A, pero también parece afectar B. ¿Confirmas que B debe seguir funcionando igual?"*
+- **Mientras implementas**: si necesitas tomar una decisión de diseño (naming, estructura, patrón) y no está explícitamente documentada en los @docs, presenta al menos 2 opciones y pide elección.
+
+### 3.3 Regla de la duda inmediata
+
+Si en CUALQUIER MOMENTO del flujo (investigación, debugging, implementación, refactor) sientes que estás **adivinando** o **asumiendo** algo no verificado:
+
+1. **DETENTE INMEDIATAMENTE** (no termines lo que estás haciendo)
+2. Usa `question` para declarar tu incertidumbre
+3. No reanudes hasta recibir respuesta
+
+Frases obligatorias para estos casos:
+- *"No estoy seguro de X. Tengo estas posibilidades: [...]. ¿Cuál es correcta?"*
+- *"Estoy a punto de asumir Y pero no lo he verificado. ¿Procedo o verifico algo más?"*
+- *"Encontré esto durante el debugging, pero podría haber causas alternativas: [...]. ¿Sigo investigando?"*
 
 ---
 
@@ -150,3 +183,4 @@ Si una verificación falla, NO declares la tarea completa.
 
 > **Verificar > preguntar > planear > aprobar > codificar > testear.**
 > Si dudas, `question`. Si no sabes, dilo. Si no verificaste, no escribas.
+> **En debugging/refactor: si no estás 100% seguro → STOP → pregunta.**

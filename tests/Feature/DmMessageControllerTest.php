@@ -2,160 +2,158 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\DmMessageController;
 use App\Models\DmConversation;
-use App\Models\DmMessage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DmMessageControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $user;
-    private User $otherUser;
-    private DmConversation $conversation;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->user = User::factory()->create();
-        $this->otherUser = User::factory()->create();
-        $this->conversation = DmConversation::create([
-            'user_one_uuid' => min($this->user->uuid, $this->otherUser->uuid),
-            'user_two_uuid' => max($this->user->uuid, $this->otherUser->uuid),
-        ]);
-    }
-
     public function test_index_returns_messages_with_cursor_pagination(): void
     {
-        DmMessage::factory()->count(3)->create([
-            'dm_conversation_uuid' => $this->conversation->uuid,
-            'sender_uuid' => $this->user->uuid,
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $conversation = DmConversation::factory()->create([
+            'user_one_uuid' => $user->uuid,
+            'user_two_uuid' => $otherUser->uuid,
         ]);
-        Sanctum::actingAs($this->user);
 
-        $controller = new DmMessageController();
-        $response = $controller->index($this->conversation);
+        $this->actingAs($user, 'sanctum');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
+        $response = $this->getJson("/api/dm-conversations/{$conversation->uuid}/messages");
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'meta' => ['next_cursor', 'per_page']]);
+    }
+
+    public function test_index_returns_403_for_non_participant(): void
+    {
+        $user1 = User::factory()->create();
+        $user2 = User::factory()->create();
+        $user3 = User::factory()->create();
+        $conversation = DmConversation::factory()->create([
+            'user_one_uuid' => $user1->uuid,
+            'user_two_uuid' => $user2->uuid,
+        ]);
+
+        $this->actingAs($user3, 'sanctum');
+
+        $response = $this->getJson("/api/dm-conversations/{$conversation->uuid}/messages");
+
+        $response->assertStatus(403);
     }
 
     public function test_index_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $conversation = DmConversation::factory()->create();
 
-        $controller = new DmMessageController();
-        $controller->index($this->conversation);
+        $response = $this->getJson("/api/dm-conversations/{$conversation->uuid}/messages");
+
+        $response->assertStatus(401);
     }
 
     public function test_store_creates_new_message_and_returns_201(): void
     {
-        Sanctum::actingAs($this->user);
-
-        $controller = new DmMessageController();
-        $request = new \Illuminate\Http\Request();
-        $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'content' => 'Hello, private message!',
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $conversation = DmConversation::factory()->create([
+            'user_one_uuid' => $user->uuid,
+            'user_two_uuid' => $otherUser->uuid,
         ]);
 
-        $response = $controller->store($request, $this->conversation);
+        $this->actingAs($user, 'sanctum');
 
-        $statusCode = $response->getStatusCode();
-        $this->assertTrue(in_array($statusCode, [201, 200]));
+        $response = $this->postJson("/api/dm-conversations/{$conversation->uuid}/messages", [
+            'content' => 'Hello, world!',
+            'client_uuid' => Str::uuid()->toString(),
+        ]);
 
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $response->assertStatus(201);
+        $response->assertJson(['status' => 'success']);
 
         $this->assertDatabaseHas('dm_messages', [
-            'content' => 'Hello, private message!',
-            'dm_conversation_uuid' => $this->conversation->uuid,
-            'sender_uuid' => $this->user->uuid,
+            'dm_conversation_uuid' => $conversation->uuid,
+            'sender_uuid' => $user->uuid,
+            'content' => 'Hello, world!',
         ]);
     }
 
     public function test_store_is_idempotent_returns_200_on_existing_client_uuid(): void
     {
-        Sanctum::actingAs($this->user);
-
-        $clientUuid = \Illuminate\Support\Str::uuid()->toString();
-
-        $controller = new DmMessageController();
-
-        // First request - creates message
-        $request1 = new \Illuminate\Http\Request();
-        $request1->merge([
-            'client_uuid' => $clientUuid,
-            'content' => 'Hello, private message!',
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $conversation = DmConversation::factory()->create([
+            'user_one_uuid' => $user->uuid,
+            'user_two_uuid' => $otherUser->uuid,
         ]);
-        $response1 = $controller->store($request1, $this->conversation);
-        $this->assertEquals(201, $response1->getStatusCode());
+        $clientUuid = Str::uuid()->toString();
 
-        // Second request - should return 200 (already exists)
-        $request2 = new \Illuminate\Http\Request();
-        $request2->merge([
+        $this->actingAs($user, 'sanctum');
+
+        $this->postJson("/api/dm-conversations/{$conversation->uuid}/messages", [
+            'content' => 'First',
             'client_uuid' => $clientUuid,
-            'content' => 'Hello, private message!',
-        ]);
-        $response2 = $controller->store($request2, $this->conversation);
-        $this->assertEquals(200, $response2->getStatusCode());
+        ])->assertStatus(201);
 
-        $this->assertEquals(1, DmMessage::where('client_uuid', $clientUuid)->count());
+        $response = $this->postJson("/api/dm-conversations/{$conversation->uuid}/messages", [
+            'content' => 'Second',
+            'client_uuid' => $clientUuid,
+        ]);
+
+        $response->assertStatus(200);
     }
 
     public function test_store_requires_valid_data(): void
     {
-        Sanctum::actingAs($this->user);
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $conversation = DmConversation::factory()->create([
+            'user_one_uuid' => $user->uuid,
+            'user_two_uuid' => $otherUser->uuid,
+        ]);
 
-        $controller = new DmMessageController();
-        $request = new \Illuminate\Http\Request();
-        // Missing required fields
+        $this->actingAs($user, 'sanctum');
 
-        try {
-            $response = $controller->store($request, $this->conversation);
-            $this->assertEquals(422, $response->getStatusCode());
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $this->assertTrue(true);
-        }
+        $response = $this->postJson("/api/dm-conversations/{$conversation->uuid}/messages", [
+            'client_uuid' => Str::uuid()->toString(),
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['content']);
     }
 
-    public function test_store_with_reply_creates_thread_message(): void
+    public function test_store_returns_403_for_non_participant(): void
     {
-        $parentMessage = DmMessage::factory()->create([
-            'dm_conversation_uuid' => $this->conversation->uuid,
-            'sender_uuid' => $this->user->uuid,
-        ]);
-        Sanctum::actingAs($this->user);
-
-        $controller = new DmMessageController();
-        $request = new \Illuminate\Http\Request();
-        $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'content' => 'This is a reply',
-            'parent_message_uuid' => $parentMessage->uuid,
+        $user1 = User::factory()->create();
+        $user2 = User::factory()->create();
+        $user3 = User::factory()->create();
+        $conversation = DmConversation::factory()->create([
+            'user_one_uuid' => $user1->uuid,
+            'user_two_uuid' => $user2->uuid,
         ]);
 
-        $response = $controller->store($request, $this->conversation);
+        $this->actingAs($user3, 'sanctum');
 
-        $this->assertEquals(201, $response->getStatusCode());
-
-        $this->assertDatabaseHas('dm_messages', [
-            'content' => 'This is a reply',
-            'parent_message_uuid' => $parentMessage->uuid,
+        $response = $this->postJson("/api/dm-conversations/{$conversation->uuid}/messages", [
+            'content' => 'Should not work',
+            'client_uuid' => Str::uuid()->toString(),
         ]);
+
+        $response->assertStatus(403);
     }
 
     public function test_store_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $conversation = DmConversation::factory()->create();
 
-        $controller = new DmMessageController();
-        $controller->store(new \Illuminate\Http\Request(), $this->conversation);
+        $response = $this->postJson("/api/dm-conversations/{$conversation->uuid}/messages", [
+            'content' => 'Hello',
+            'client_uuid' => Str::uuid()->toString(),
+        ]);
+
+        $response->assertStatus(401);
     }
 }

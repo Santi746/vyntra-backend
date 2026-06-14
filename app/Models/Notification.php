@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Notificación de la aplicación dirigida a un usuario.
@@ -21,22 +22,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property array|null $data Datos adicionales en formato JSON
  * @property bool $is_read Indica si la notificación fue leída
  * @property string|null $client_uuid UUID de deduplicación del frontend
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable(['user_uuid', 'type', 'data', 'is_read', 'client_uuid'])]
 #[Hidden(['data'])]
 class Notification extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     // La tabla asignada es notifications
     protected $table = 'notifications';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Una Notificación pertenece al Usuario destinatario (el que la recibe).
@@ -53,7 +51,7 @@ class Notification extends Model
         return [
             'data' => 'array',
             'is_read' => 'boolean',
-            'client_uuid' => 'string'
+            'client_uuid' => 'string',
         ];
     }
 }

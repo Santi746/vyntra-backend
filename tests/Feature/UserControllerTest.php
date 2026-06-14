@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Controllers\UserController;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ class UserControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new UserController();
+        $controller = new UserController;
         $request = request();
         $response = $controller->me($request);
 
@@ -33,7 +34,7 @@ class UserControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new UserController();
+        $controller = new UserController;
         $response = $controller->show($user);
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -47,14 +48,14 @@ class UserControllerTest extends TestCase
         Sanctum::actingAs($user);
 
         // Create a user with non-existent UUID for route model binding
-        $nonExistentUser = new User();
+        $nonExistentUser = new User;
         $nonExistentUser->uuid = 'nonexistent-uuid';
 
         try {
-            $controller = new UserController();
+            $controller = new UserController;
             $response = $controller->show($nonExistentUser);
             $this->assertEquals(404, $response->getStatusCode());
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             $this->assertTrue(true);
         }
     }
@@ -66,7 +67,7 @@ class UserControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new UserController();
+        $controller = new UserController;
 
         // Create a mock UpdateUserRequest
         $request = $this->app->make(UpdateUserRequest::class);
@@ -91,7 +92,7 @@ class UserControllerTest extends TestCase
         $user->createToken('token-2')->plainTextToken;
         Sanctum::actingAs($user);
 
-        $controller = new UserController();
+        $controller = new UserController;
         $response = $controller->sessions(request());
 
         $this->assertEquals(200, $response->getStatusCode());

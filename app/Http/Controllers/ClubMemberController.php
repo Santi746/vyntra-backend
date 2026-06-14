@@ -2,38 +2,23 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\ClubMemberResource;
+use App\Models\Club;
+use App\Models\ClubMember;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use App\Models\Club;
-use App\Models\ClubMember;
-use App\Http\Resources\ClubMemberResource;
 use Illuminate\Support\Facades\Gate;
 
 /**
  * Controlador de miembros de clubs.
- *
- * El controller es SOLO un coordinador. La lógica de negocio
- * (duplicados, soft-deletes, etc.) va en otra capa o se delega
- * a la BD (constraints UNIQUE).
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\Illuminate\Http\Request $request, \App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse store(\Illuminate\Http\Request $request, \App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse destroy(\Illuminate\Http\Request $request, \App\Models\Club $club, string $member)
  */
 class ClubMemberController extends Controller
 {
-    /**
-     * Lista los miembros de un club paginados por cursor.
-     *
-     * @param Request $request
-     * @param Club $club
-     * @return JsonResponse
-     */
     public function index(Request $request, Club $club): JsonResponse
     {
+        Gate::authorize('viewAny', [ClubMember::class, $club]);
+
         $members = ClubMember::where('club_uuid', $club->uuid)
             ->with(['user', 'roles'])
             ->orderBy('joined_at', 'asc')
@@ -49,15 +34,7 @@ class ClubMemberController extends Controller
         ]);
     }
 
-    /**
-     * Une al usuario autenticado al club.
-     *
-     * Idempotente: si ya es miembro, devuelve la membresía existente.
-     *
-     * @param Request $request
-     * @param Club $club
-     * @return JsonResponse
-     */
+    // Une al usuario autenticado al club (idempotente).
     public function store(Request $request, Club $club): JsonResponse
     {
         $membership = ClubMember::firstOrCreate(
@@ -73,14 +50,7 @@ class ClubMemberController extends Controller
         ], $membership->wasRecentlyCreated ? 201 : 200);
     }
 
-    /**
-     * Elimina la membresía de un usuario en el club (soft delete).
-     *
-     * @param Request $request
-     * @param Club $club
-     * @param string $member UUID de la membresía
-     * @return JsonResponse
-     */
+    // Elimina la membresía de un usuario en el club (soft delete).
     public function destroy(Request $request, Club $club, string $member): Response
     {
         Gate::authorize('delete', [ClubMember::class, $club]);

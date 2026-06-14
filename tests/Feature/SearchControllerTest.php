@@ -5,7 +5,10 @@ namespace Tests\Feature;
 use App\Http\Controllers\SearchController;
 use App\Models\Club;
 use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -19,8 +22,8 @@ class SearchControllerTest extends TestCase
         Club::factory()->create(['name' => 'Test Club']);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'Test']);
 
         $response = $controller->index($request);
@@ -39,8 +42,8 @@ class SearchControllerTest extends TestCase
         User::factory()->create(['username' => 'testuser']);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'Test', 'filter' => 'clubs']);
 
         $response = $controller->index($request);
@@ -59,8 +62,8 @@ class SearchControllerTest extends TestCase
         User::factory()->create(['username' => 'testuser', 'user_tag' => '1234']);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'test', 'filter' => 'users']);
 
         $response = $controller->index($request);
@@ -76,24 +79,24 @@ class SearchControllerTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         // No 'q' parameter
 
         try {
             $response = $controller->index($request);
             $this->assertEquals(422, $response->getStatusCode());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->assertTrue(true);
         }
     }
 
     public function test_index_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $this->expectException(AuthenticationException::class);
 
-        $controller = new SearchController();
-        $controller->index(new \Illuminate\Http\Request());
+        $controller = new SearchController;
+        $controller->index(new Request);
     }
 
     public function test_index_searches_by_user_tag(): void
@@ -101,8 +104,8 @@ class SearchControllerTest extends TestCase
         User::factory()->create(['username' => 'john', 'user_tag' => 'unique999']);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'unique999']);
 
         $response = $controller->index($request);
@@ -121,8 +124,8 @@ class SearchControllerTest extends TestCase
         ]);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'gaming']);
 
         $response = $controller->index($request);
@@ -136,8 +139,8 @@ class SearchControllerTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'nonexistentquery12345']);
 
         $response = $controller->index($request);
@@ -152,14 +155,14 @@ class SearchControllerTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new SearchController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new SearchController;
+        $request = new Request;
         $request->merge(['q' => 'test', 'filter' => 'invalid']);
 
         try {
             $response = $controller->index($request);
             $this->assertEquals(422, $response->getStatusCode());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->assertTrue(true);
         }
     }

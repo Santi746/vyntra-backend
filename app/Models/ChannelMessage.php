@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Mensaje dentro de un canal de club.
@@ -22,20 +23,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property string $content Contenido del mensaje
  * @property string $status Estado del mensaje (sent, edited)
  * @property string $client_uuid UUID de deduplicación del frontend
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ChannelMessage newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ChannelMessage newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ChannelMessage query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable(['club_channel_uuid', 'sender_uuid', 'parent_message_uuid', 'content', 'status', 'client_uuid'])]
 class ChannelMessage extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'channel_messages';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Un Mensaje de Canal pertenece a un único Canal del Club.
@@ -74,7 +72,7 @@ class ChannelMessage extends Model
     {
         return [
             'client_uuid' => 'string',
-            'status' => 'string'
+            'status' => 'string',
         ];
     }
 }

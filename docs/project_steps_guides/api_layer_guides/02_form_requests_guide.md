@@ -1,4 +1,6 @@
-# 📋 Guía: Form Requests (Validadores de Entrada)
+# 📋 Guía: Form Requests (Validadores de Entrada) ✅
+
+> **Completado.** 18 Form Requests creados, validación exhaustiva, mensajes en español.
 
 **Objetivo:** Crear los Form Requests que actúan como porteros de seguridad. Cada petición de escritura (POST, PUT, PATCH) debe pasar por uno antes de llegar al Controller.
 

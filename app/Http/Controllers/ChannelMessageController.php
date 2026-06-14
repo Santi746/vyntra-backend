@@ -2,32 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ClubChannel;
+use App\Http\Requests\Chat\StoreChannelMessageRequest;
+use App\Http\Resources\MessageResource;
 use App\Models\ChannelMessage;
+use App\Models\ClubChannel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Resources\MessageResource;
-use App\Http\Requests\Chat\StoreChannelMessageRequest;
 
 /**
  * Controlador de mensajes de canales de club.
- *
- * Lista mensajes con paginación por cursor y crea mensajes
- * con idempotencia vía firstOrCreate usando client_uuid.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\App\Models\ClubChannel $channel)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\Chat\StoreChannelMessageRequest $request, \App\Models\ClubChannel $channel)
  */
 class ChannelMessageController extends Controller
 {
-    /**
-     * Lista los mensajes de un canal con paginación por cursor.
-     *
-     * @param ClubChannel $channel Canal del cual listar mensajes
-     * @return JsonResponse
-     */
     public function index(ClubChannel $channel): JsonResponse
     {
         Gate::authorize('viewAny', [ChannelMessage::class, $channel]);
@@ -46,13 +32,7 @@ class ChannelMessageController extends Controller
         ]);
     }
 
-    /**
-     * Crea un nuevo mensaje en un canal (idempotente).
-     *
-     * @param StoreChannelMessageRequest $request Validación del mensaje
-     * @param ClubChannel $channel Canal destino
-     * @return JsonResponse 201 si se creó, 200 si ya existía
-     */
+    // Crea un mensaje en un canal (idempotente por client_uuid).
     public function store(StoreChannelMessageRequest $request, ClubChannel $channel): JsonResponse
     {
         Gate::authorize('create', [ChannelMessage::class, $channel]);

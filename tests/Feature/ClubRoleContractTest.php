@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Club;
+use App\Models\ClubMember;
 use App\Models\ClubRole;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,6 +21,10 @@ class ClubRoleContractTest extends TestCase
     {
         $user = User::factory()->create();
         $club = Club::factory()->create(['owner_uuid' => $user->uuid]);
+        ClubMember::factory()->create([
+            'user_uuid' => $user->uuid,
+            'club_uuid' => $club->uuid,
+        ]);
         $role = ClubRole::factory()->create([
             'club_uuid' => $club->uuid,
             'permissions' => 255,

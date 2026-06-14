@@ -7,10 +7,6 @@ use Illuminate\Validation\Rule;
 
 /**
  * Valida la creación de una conversación DM (direct message) entre dos usuarios.
- *
- * @package App\Http\Requests\Chat
- *
- * @return array<string, mixed>
  */
 class StoreDmConversationRequest extends FormRequest
 {

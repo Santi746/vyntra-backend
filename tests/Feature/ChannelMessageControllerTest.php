@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\ChannelMessageController;
-use App\Http\Requests\Chat\StoreChannelMessageRequest;
 use App\Models\ChannelMessage;
 use App\Models\Club;
 use App\Models\ClubCategory;
@@ -11,158 +9,162 @@ use App\Models\ClubChannel;
 use App\Models\ClubMember;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ChannelMessageControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    private User $user;
-    private Club $club;
-    private ClubCategory $category;
-    private ClubChannel $channel;
-
-    protected function setUp(): void
+    private function setupMemberInClub(User $user, Club $club): ClubMember
     {
-        parent::setUp();
-        $this->user = User::factory()->create();
-        $this->club = Club::factory()->create(['owner_uuid' => $this->user->uuid]);
-        $this->category = ClubCategory::factory()->create(['club_uuid' => $this->club->uuid]);
-        $this->channel = ClubChannel::factory()->create(['category_uuid' => $this->category->uuid]);
-        ClubMember::factory()->create([
-            'user_uuid' => $this->user->uuid,
-            'club_uuid' => $this->club->uuid,
+        return ClubMember::factory()->create([
+            'user_uuid' => $user->uuid,
+            'club_uuid' => $club->uuid,
         ]);
     }
 
     public function test_index_returns_messages_with_cursor_pagination(): void
     {
-        ChannelMessage::factory()->count(3)->create([
-            'club_channel_uuid' => $this->channel->uuid,
-            'sender_uuid' => $this->user->uuid,
-        ]);
-        Sanctum::actingAs($this->user);
+        $user = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $user->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
+        $this->setupMemberInClub($user, $club);
 
-        $controller = new ChannelMessageController();
-        $response = $controller->index($this->channel);
+        $this->actingAs($user, 'sanctum');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
+        $response = $this->getJson("/api/channels/{$channel->uuid}/messages");
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'meta' => ['next_cursor', 'per_page']]);
     }
 
-    public function test_index_forbidden_for_non_member(): void
+    public function test_index_returns_403_for_non_member(): void
     {
-        $nonMember = User::factory()->create();
-        Sanctum::actingAs($nonMember);
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $otherUser->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
 
-        $controller = new ChannelMessageController();
+        $this->actingAs($user, 'sanctum');
 
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
-        $controller->index($this->channel);
+        $response = $this->getJson("/api/channels/{$channel->uuid}/messages");
+
+        $response->assertStatus(403);
     }
 
     public function test_store_creates_new_message_and_returns_201(): void
     {
-        Sanctum::actingAs($this->user);
+        $user = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $user->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
+        $this->setupMemberInClub($user, $club);
 
-        $controller = new ChannelMessageController();
+        $this->actingAs($user, 'sanctum');
 
-        // Create a mock StoreChannelMessageRequest
-        $request = $this->app->make(StoreChannelMessageRequest::class);
-        $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
+        $response = $this->postJson("/api/channels/{$channel->uuid}/messages", [
             'content' => 'Hello, world!',
+            'client_uuid' => Str::uuid()->toString(),
         ]);
 
-        $response = $controller->store($request, $this->channel);
-
-        $statusCode = $response->getStatusCode();
-        $this->assertTrue(in_array($statusCode, [201, 200]));
-
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $response->assertStatus(201);
+        $response->assertJson(['status' => 'success']);
 
         $this->assertDatabaseHas('channel_messages', [
+            'club_channel_uuid' => $channel->uuid,
+            'sender_uuid' => $user->uuid,
             'content' => 'Hello, world!',
-            'club_channel_uuid' => $this->channel->uuid,
-            'sender_uuid' => $this->user->uuid,
         ]);
     }
 
     public function test_store_is_idempotent_returns_200_on_existing_client_uuid(): void
     {
-        Sanctum::actingAs($this->user);
+        $user = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $user->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
+        $this->setupMemberInClub($user, $club);
+        $clientUuid = Str::uuid()->toString();
 
-        $clientUuid = \Illuminate\Support\Str::uuid()->toString();
+        $this->actingAs($user, 'sanctum');
 
-        $controller = new ChannelMessageController();
-
-        // First request - creates message
-        $request1 = $this->app->make(StoreChannelMessageRequest::class);
-        $request1->merge([
+        $this->postJson("/api/channels/{$channel->uuid}/messages", [
+            'content' => 'First',
             'client_uuid' => $clientUuid,
-            'content' => 'Hello, world!',
-        ]);
-        $response1 = $controller->store($request1, $this->channel);
-        $this->assertEquals(201, $response1->getStatusCode());
+        ])->assertStatus(201);
 
-        // Second request - should return 200 (already exists)
-        $request2 = $this->app->make(StoreChannelMessageRequest::class);
-        $request2->merge([
+        $response = $this->postJson("/api/channels/{$channel->uuid}/messages", [
+            'content' => 'Second',
             'client_uuid' => $clientUuid,
-            'content' => 'Hello, world!',
         ]);
-        $response2 = $controller->store($request2, $this->channel);
-        $this->assertEquals(200, $response2->getStatusCode());
 
-        $this->assertEquals(1, ChannelMessage::where('client_uuid', $clientUuid)->count());
+        $response->assertStatus(200);
+    }
+
+    public function test_store_requires_valid_data(): void
+    {
+        $user = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $user->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
+        $this->setupMemberInClub($user, $club);
+
+        $this->actingAs($user, 'sanctum');
+
+        $response = $this->postJson("/api/channels/{$channel->uuid}/messages", [
+            'client_uuid' => Str::uuid()->toString(),
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['content']);
     }
 
     public function test_store_forbidden_for_non_member(): void
     {
-        $nonMember = User::factory()->create();
-        Sanctum::actingAs($nonMember);
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $otherUser->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
 
-        $controller = new ChannelMessageController();
+        $this->actingAs($user, 'sanctum');
 
-        // Create a mock StoreChannelMessageRequest
-        $request = $this->app->make(StoreChannelMessageRequest::class);
-        $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
-            'content' => 'Hello, world!',
+        $response = $this->postJson("/api/channels/{$channel->uuid}/messages", [
+            'content' => 'Should not work',
+            'client_uuid' => Str::uuid()->toString(),
         ]);
 
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
-        $controller->store($request, $this->channel);
+        $response->assertStatus(403);
     }
 
     public function test_store_with_reply_creates_thread_message(): void
     {
-        $parentMessage = ChannelMessage::factory()->create([
-            'club_channel_uuid' => $this->channel->uuid,
-            'sender_uuid' => $this->user->uuid,
+        $user = User::factory()->create();
+        $club = Club::factory()->create(['owner_uuid' => $user->uuid]);
+        $category = ClubCategory::factory()->create(['club_uuid' => $club->uuid]);
+        $channel = ClubChannel::factory()->create(['category_uuid' => $category->uuid]);
+        $this->setupMemberInClub($user, $club);
+        $parent = ChannelMessage::factory()->create([
+            'club_channel_uuid' => $channel->uuid,
+            'sender_uuid' => $user->uuid,
         ]);
-        Sanctum::actingAs($this->user);
 
-        $controller = new ChannelMessageController();
+        $this->actingAs($user, 'sanctum');
 
-        $request = $this->app->make(StoreChannelMessageRequest::class);
-        $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
+        $response = $this->postJson("/api/channels/{$channel->uuid}/messages", [
             'content' => 'This is a reply',
-            'parent_message_uuid' => $parentMessage->uuid,
+            'client_uuid' => Str::uuid()->toString(),
+            'parent_message_uuid' => $parent->uuid,
         ]);
 
-        $response = $controller->store($request, $this->channel);
-
-        $this->assertEquals(201, $response->getStatusCode());
+        $response->assertStatus(201);
 
         $this->assertDatabaseHas('channel_messages', [
+            'parent_message_uuid' => $parent->uuid,
             'content' => 'This is a reply',
-            'parent_message_uuid' => $parentMessage->uuid,
         ]);
     }
 }

@@ -1,6 +1,11 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md", "rules.md"],
+  "instructions": ["AGENTS.md", "rules.md", "docs/architecture/mandatory_patterns.md"],
+  "agent": {
+    "build": {
+      "model": "opencode/nemotron-3-ultra-free"
+    }
+  },
   "permission": {
     "edit": "allow",
     "webfetch": "ask",

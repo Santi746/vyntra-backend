@@ -2,31 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Chat\StoreDmMessageRequest;
+use App\Http\Resources\DmMessageResource;
 use App\Models\DmConversation;
 use App\Models\DmMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Resources\DmMessageResource;
-use App\Http\Requests\Chat\StoreDmMessageRequest;
 
 /**
  * Controlador de mensajes de conversaciones DM.
- *
- * Lista mensajes de una conversación y crea nuevos con idempotencia.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\App\Models\DmConversation $dmConversation)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\Chat\StoreDmMessageRequest $request, \App\Models\DmConversation $dmConversation)
  */
 class DmMessageController extends Controller
 {
-    /**
-     * Lista los mensajes de una conversación DM.
-     *
-     * @param DmConversation $dmConversation Conversación de la cual listar mensajes
-     * @return JsonResponse
-     */
     public function index(DmConversation $dmConversation): JsonResponse
     {
         Gate::authorize('view', $dmConversation);
@@ -45,13 +32,7 @@ class DmMessageController extends Controller
         ]);
     }
 
-    /**
-     * Envía un nuevo mensaje en una conversación DM (idempotente).
-     *
-     * @param StoreDmMessageRequest $request Validación del mensaje
-     * @param DmConversation $dmConversation Conversación destino
-     * @return JsonResponse 201 si se creó, 200 si ya existía
-     */
+    // Envía un mensaje DM (idempotente por client_uuid).
     public function store(StoreDmMessageRequest $request, DmConversation $dmConversation): JsonResponse
     {
         Gate::authorize('create', $dmConversation);

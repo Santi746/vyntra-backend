@@ -2,28 +2,24 @@
 
 namespace App\Http\Resources;
 
+use App\Models\DmConversation;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Resource para formatear una Conversación DM en JSON.
  *
- * Devuelve el participante (el "otro" usuario) calculado desde el usuario autenticado.
- * Si no hay usuario autenticado, devuelve userOne como fallback.
- *
- * @package App\Http\Resources
- *
- * @property-read \App\Models\DmConversation $resource
+ * @property-read DmConversation $resource
  */
 class DmConversationResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
         return [
-            'uuid' => $this->uuid,
+            'uuid' => (string) $this->uuid,
             'unread_count' => (int) ($this->unread_count ?? 0),
-            'created_at' => $this->created_at->toISOString(),
-            'updated_at' => $this->updated_at->toISOString(),
+            'created_at' => $this->created_at->toIso8601String(),
+            'updated_at' => $this->updated_at->toIso8601String(),
             'participant' => new UserResource($this->when(
                 $this->relationLoaded('userOne') || $this->relationLoaded('userTwo'),
                 function () use ($request) {
@@ -31,6 +27,7 @@ class DmConversationResource extends JsonResource
                     if ($currentUser && $this->user_one_uuid === $currentUser->uuid) {
                         return $this->userTwo;
                     }
+
                     return $this->userOne;
                 }
             )),

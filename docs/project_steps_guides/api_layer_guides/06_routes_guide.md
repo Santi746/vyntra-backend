@@ -1,6 +1,6 @@
 # 🚪 Guía: Rutas API (routes/api.php)
 
-**Objetivo:** Registrar todos los endpoints de Vyntra en el archivo `routes/api.php`, conectando cada URL con su Controller correspondiente y aplicando los middlewares de seguridad correctos.
+**Objetivo:** Documentar todos los endpoints de Vyntra registrados en `routes/api.php`. Este archivo conecta cada URL con su Controller y aplica los middlewares de seguridad.
 
 > [!IMPORTANT]
 > **Regla de Oro:** Las rutas son solo declaraciones de URLs. No contienen lógica. Nunca escribas lógica de negocio, consultas a la BD ni validaciones dentro de `routes/api.php`. Su única responsabilidad es el mapeo URL → Controller.
@@ -19,184 +19,208 @@ Todo lo demás. Si el frontend no envía el token `Bearer` en la cabecera `Autho
 
 ---
 
-## Checklist de Implementación
+## Rutas registradas actualmente
 
-### 1. Verificar que `routes/api.php` existe
-- [ ] Confirmar que el archivo fue creado por `php artisan install:api` (Paso 01)
-
----
-
-### 2. Registrar las rutas públicas de autenticación
-- [ ] Añadir al inicio de `routes/api.php`:
-  ```php
-  // ============================================================
-  // RUTAS PÚBLICAS (No requieren autenticación)
-  // ============================================================
-  Route::prefix('auth')->group(function () {
-      Route::post('/register', [AuthController::class, 'register']);
-      Route::post('/login',    [AuthController::class, 'login']);
-  });
-  ```
+### Rutas públicas de autenticación
+```php
+// ============================================================
+// RUTAS PÚBLICAS (No requieren autenticación)
+// ============================================================
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login',    [AuthController::class, 'login']);
+});
+```
 
 ---
 
-### 3. Registrar las rutas protegidas
-- [ ] Añadir a continuación en `routes/api.php`:
-  ```php
-  // ============================================================
-  // RUTAS PROTEGIDAS (Requieren token Bearer de Sanctum)
-  // ============================================================
-  Route::middleware('auth:sanctum')->group(function () {
+### Rutas protegidas
 
-      // -- Autenticación --
-      Route::post('/auth/logout', [AuthController::class, 'logout']);
+```php
+// ============================================================
+// RUTAS PROTEGIDAS (Requieren token Bearer de Sanctum)
+// ============================================================
+Route::middleware('auth:sanctum')->group(function () {
 
-      // -- Usuario Autenticado y Perfiles --
-      Route::get('/user',                [UserController::class, 'me']);
-      Route::patch('/user',              [UserController::class, 'updateProfile']);
-      Route::get('/user/sessions',       [UserController::class, 'sessions']);
-      Route::get('/users/{user}',        [UserController::class, 'show']); // Perfil público de otro usuario (Route Model Binding)
+    // ============================================================
+    // RUTAS DE LECTURA (GET) — Sin rate limiting
+    // ============================================================
 
-      // -- Amistades (Amigos y Solicitudes) --
-      Route::get('/user/friends',        [FriendshipController::class, 'index']);
-      Route::get('/user/friend-requests', [FriendshipController::class, 'pending']);
-      Route::patch('/user/friend-requests/{request_uuid}', [FriendshipController::class, 'respond']);
+    // -- Usuario --
+    Route::get('/user',                [UserController::class, 'me']);
+    Route::get('/user/sessions',       [UserController::class, 'sessions']);
+    Route::get('/users/{user}',        [UserController::class, 'show']);
 
-      // -- Notificaciones --
-      Route::get('/notifications',              [NotificationController::class, 'index']);
-      Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    // -- Amistades --
+    Route::get('/user/friends',              [FriendshipController::class, 'index']);
+    Route::get('/user/friend-requests',      [FriendshipController::class, 'pending']);
 
-      // -- Clubes --
-      Route::get('/user/clubs',     [ClubController::class, 'index']); // Clubes del usuario autenticado
-      Route::post('/clubs',         [ClubController::class, 'store']);
-      Route::get('/clubs/{club}',   [ClubController::class, 'show']);
-      Route::patch('/clubs/{club}', [ClubController::class, 'update']);
-      Route::delete('/clubs/{club}',[ClubController::class, 'destroy']);
+    // -- Notificaciones --
+    Route::get('/notifications',                    [NotificationController::class, 'index']);
 
-      // -- Miembros y Roles del Club --
-      Route::get('/clubs/{club}/members',          [ClubMemberController::class, 'index']);
-      Route::post('/clubs/{club}/members',         [ClubMemberController::class, 'store']);
-      Route::get('/clubs/{club}/members/{member}', [ClubMemberController::class, 'show']);
-      Route::delete('/clubs/{club}/members/{member}', [ClubMemberController::class, 'destroy']);
-      Route::get('/clubs/{club}/bans',             [ClubMemberController::class, 'bans']); // Listado de baneados
-      
-      // Roles del Club (Rutas CRUD y asignación)
-      Route::get('/clubs/{club}/roles',            [ClubRoleController::class, 'index']);
-      Route::post('/clubs/{club}/roles',           [ClubRoleController::class, 'store']);
-      Route::patch('/clubs/{club}/roles/{role}',   [ClubRoleController::class, 'update']);
-      Route::delete('/clubs/{club}/roles/{role}',  [ClubRoleController::class, 'destroy']);
-      Route::post('/clubs/{club}/members/{member}/roles', [ClubMemberRoleController::class, 'store']); // Asignar Rol
+    // -- Clubes --
+    Route::get('/user/clubs',      [ClubController::class, 'index']);
+    Route::get('/clubs/{club}/preview', [ClubController::class, 'preview']);
+    Route::get('/clubs/{club}',    [ClubController::class, 'show']);
 
-      // -- Categorías del Club --
-      Route::get('/clubs/{club}/categories',            [ClubCategoryController::class, 'index']);
-      Route::post('/clubs/{club}/categories',           [ClubCategoryController::class, 'store']);
-      Route::patch('/clubs/{club}/categories/{category}', [ClubCategoryController::class, 'update']);
-      Route::delete('/clubs/{club}/categories/{category}',[ClubCategoryController::class, 'destroy']);
+    // -- Miembros --
+    Route::get('/clubs/{club}/members', [ClubMemberController::class, 'index']);
 
-      // -- Canales del Club (Canales creados en la raíz del club o asociados a categorías) --
-      Route::get('/clubs/{club}/channels',          [ClubChannelController::class, 'index']);
-      Route::post('/clubs/{club}/channels',         [ClubChannelController::class, 'store']);
-      Route::patch('/clubs/{club}/channels/{channel}', [ClubChannelController::class, 'update']);
-      Route::delete('/clubs/{club}/channels/{channel}',[ClubChannelController::class, 'destroy']);
+    // -- Roles --
+    Route::get('/clubs/{club}/roles',   [ClubRoleController::class, 'index']);
 
-      // -- Mensajes de Canal (paginación por cursor obligatoria) --
-      Route::get('/channels/{channel}/messages',  [ChannelMessageController::class, 'index']);
-      Route::post('/channels/{channel}/messages', [ChannelMessageController::class, 'store']);
+    // -- Categorías --
+    Route::get('/clubs/{club}/categories', [ClubCategoryController::class, 'index']);
 
-      // -- Conversaciones de Mensajes Directos (DM) --
-      Route::get('/user/dm-conversations',                    [DmConversationController::class, 'index']);
-      Route::get('/dm-conversations/{dm_conversation}',        [DmConversationController::class, 'show']);
-      Route::get('/dm-conversations/{dm_conversation}/messages', [DmMessageController::class, 'index']);
-      Route::post('/dm-conversations/{dm_conversation}/messages', [DmMessageController::class, 'store']);
+    // -- Canales --
+    Route::get('/clubs/{club}/channels', [ClubChannelController::class, 'index']);
 
-      // -- Dashboard y Búsqueda --
-      Route::get('/explore', [ExploreController::class, 'index']);
-      Route::get('/search',  [SearchController::class, 'index']);
-  });
-  ```
+    // -- Mensajes --
+    Route::get('/channels/{channel}/messages', [ChannelMessageController::class, 'index']);
 
----
+    // -- DM --
+    Route::get('/user/dm-conversations',                      [DmConversationController::class, 'index']);
+    Route::get('/dm-conversations/{dm_conversation}',          [DmConversationController::class, 'show']);
+    Route::get('/dm-conversations/{dm_conversation}/messages', [DmMessageController::class, 'index']);
 
-### 4. Importar todos los Controllers al inicio del archivo
-- [ ] Añadir todos los `use` al inicio de `routes/api.php`:
-  ```php
-  use App\Http\Controllers\AuthController;
-  use App\Http\Controllers\UserController;
-  use App\Http\Controllers\ClubController;
-  use App\Http\Controllers\ClubMemberController;
-  use App\Http\Controllers\ClubMemberRoleController;
-  use App\Http\Controllers\ClubCategoryController;
-  use App\Http\Controllers\ClubChannelController;
-  use App\Http\Controllers\ClubRoleController;
-  use App\Http\Controllers\ChannelMessageController;
-  use App\Http\Controllers\DmConversationController;
-  use App\Http\Controllers\DmMessageController;
-  use App\Http\Controllers\NotificationController;
-  use App\Http\Controllers\FriendshipController;
-  use App\Http\Controllers\ExploreController;
-  use App\Http\Controllers\SearchController;
-  ```
+    // -- Dashboard y Búsqueda --
+    Route::get('/explore', [ExploreController::class, 'index']);
+    Route::get('/search',  [SearchController::class, 'index']);
 
----
+    // ============================================================
+    // RUTAS DE ESCRITURA (POST/PATCH/DELETE) — Rate limited
+    // ============================================================
+    Route::middleware('throttle:10,1')->group(function () {
 
-### 5. Verificar que todas las rutas se registraron correctamente
-- [ ] Ejecutar el siguiente comando y revisar que todas las rutas aparecen:
-  ```bash
-  php artisan route:list --path=api
-  ```
-  Deberías ver una tabla con todas las rutas registradas, su método HTTP, URL, middleware y Controller asignado.
+        // -- Autenticación --
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
 
----
+        // -- Usuario --
+        Route::patch('/user', [UserController::class, 'updateProfile']);
 
-### 6. Probar las rutas públicas en Insomnia
-- [ ] Abrir Insomnia y hacer una petición de registro:
-  ```
-  POST http://localhost:8000/api/auth/register
-  Content-Type: application/json
+        // -- Amistades --
+        Route::post('/user/friend-requests',                  [FriendshipController::class, 'store']);
+        Route::patch('/user/friend-requests/{request_uuid}', [FriendshipController::class, 'respond']);
 
-  {
-    "username": "tester",
-    "user_tag": "tester-1337",
-    "first_name": "Test",
-    "last_name": "User",
-    "email": "test@example.com",
-    "password": "password",
-    "password_confirmation": "password"
-  }
-  ```
-  - ✅ Respuesta esperada: `201 Created` con `access_token` en el JSON
-  - ❌ Respuesta de error esperada: `422` si falta un campo obligatorio
+        // -- Notificaciones --
+        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
 
-- [ ] Hacer una petición de login con las mismas credenciales:
-  ```
-  POST http://localhost:8000/api/auth/login
-  Content-Type: application/json
+        // -- Clubes --
+        Route::post('/clubs',           [ClubController::class, 'store']);
+        Route::patch('/clubs/{club}',   [ClubController::class, 'update']);
+        Route::delete('/clubs/{club}',  [ClubController::class, 'destroy']);
 
-  {
-    "email": "test@example.com",
-    "password": "password"
-  }
-  ```
-  - ✅ Respuesta esperada: `200 OK` con `access_token`
+        // -- Miembros --
+        Route::post('/clubs/{club}/members',            [ClubMemberController::class, 'store']);
+        Route::delete('/clubs/{club}/members/{member}', [ClubMemberController::class, 'destroy']);
 
-- [ ] Copiar el `access_token` y hacer una petición protegida:
-  ```
-  GET http://localhost:8000/api/user
-  Authorization: Bearer {el_token_que_copiaste}
-  ```
-  - ✅ Respuesta esperada: `200 OK` con los datos del usuario autenticado
+        // -- Roles --
+        Route::post('/clubs/{club}/roles',                    [ClubRoleController::class, 'store']);
+        Route::patch('/clubs/{club}/roles',                   [ClubRoleController::class, 'update']);
+        Route::delete('/clubs/{club}/roles/{role}',           [ClubRoleController::class, 'destroy']);
+        Route::post('/clubs/{club}/members/{user}/roles',     [ClubMemberRoleController::class, 'store']);
+
+        // -- Categorías --
+        Route::post('/clubs/{club}/categories',               [ClubCategoryController::class, 'store']);
+        Route::patch('/clubs/{club}/categories',              [ClubCategoryController::class, 'update']);
+        Route::delete('/clubs/{club}/categories/{category}',  [ClubCategoryController::class, 'destroy']);
+
+        // -- Canales --
+        Route::post('/clubs/{club}/channels',             [ClubChannelController::class, 'store']);
+        Route::patch('/clubs/{club}/channels/{channel}',  [ClubChannelController::class, 'update']);
+        Route::delete('/clubs/{club}/channels/{channel}', [ClubChannelController::class, 'destroy']);
+
+        // -- Mensajes --
+        Route::post('/channels/{channel}/messages', [ChannelMessageController::class, 'store']);
+
+        // -- DM --
+        Route::post('/dm-conversations',                          [DmConversationController::class, 'store']);
+        Route::post('/dm-conversations/{dm_conversation}/messages', [DmMessageController::class, 'store']);
+    });
+});
+```
 
 ---
 
-## Resultado esperado al finalizar
+## Verificación
+
+Para confirmar que todas las rutas están registradas correctamente:
+
+```bash
+php artisan route:list --path=api
+```
+
+Debe mostrar una tabla con las **44 rutas**, su método HTTP, URL, middleware y Controller asignado.
+
+---
+
+## Probar las rutas (Insomnia / Postman)
+
+### 1. Registro de usuario
+```
+POST http://localhost:8000/api/auth/register
+Content-Type: application/json
+
+{
+  "username": "tester",
+  "user_tag": "tester-1337",
+  "first_name": "Test",
+  "last_name": "User",
+  "email": "test@example.com",
+  "password": "password",
+  "password_confirmation": "password"
+}
+```
+- ✅ `201 Created` con `access_token` en el JSON
+- ❌ `422` si falta un campo obligatorio
+
+### 2. Inicio de sesión
+```
+POST http://localhost:8000/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password"
+}
+```
+- ✅ `200 OK` con `access_token`
+
+### 3. Ruta protegida (usando el token)
+```
+GET http://localhost:8000/api/user
+Authorization: Bearer {access_token}
+```
+- ✅ `200 OK` con datos del usuario
+- ❌ `401 Unauthorized` si no se envía el token
+
+---
+
+## Resultado esperado
 
 ```
-✅ routes/api.php con rutas públicas y protegidas bien separadas
-✅ Todas las rutas conectadas a sus Controllers correspondientes
-✅ php artisan route:list --path=api muestra todas las rutas sin errores
-✅ Register y Login funcionan correctamente en Insomnia
-✅ Las rutas protegidas devuelven 401 sin token y 200 con token válido
+✅ 44 rutas registradas en routes/api.php
+✅ Públicas y protegidas bien separadas
+✅ Todas conectadas a sus Controllers
+✅ php artisan route:list sin errores
+✅ Sanctum funciona (401 sin token, 200 con token)
 ```
+
+---
+
+## Rate Limiting (throttle)
+
+> **REGLA 2** de `docs/architecture/IMPORTANT_PRACTICES.md`.
+
+Las rutas de escritura (POST/PATCH/DELETE) están agrupadas bajo un middleware `throttle:10,1` que limita a **10 requests por minuto** por IP. Esto protege la futura infraestructura de Redis/Reverb del spam o abusos.
+
+**Estructura de middlewares:**
+```
+auth:sanctum (GET routes) → sin throttle
+auth:sanctum + throttle:10,1 (POST/PATCH/DELETE routes) → rate limited
+```
+
+Las rutas de lectura (GET) no tienen rate limiting para evitar falsos positivos en carga de páginas. Si en el futuro se requiere, se puede ajustar el threshold por ruta específica.
 
 ---
 

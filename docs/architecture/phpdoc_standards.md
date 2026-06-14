@@ -2,288 +2,158 @@
 
 ## Propósito
 
-Este archivo define **EXACTAMENTE** cómo se documenta el código en este proyecto.
-El objetivo es que **cada clase, propiedad y método sea legible al hacer hover**
-en el IDE (VS Code, PhpStorm, etc.), sin necesidad de abrir el archivo o leer
-la documentación original de Laravel en inglés.
+Mantener la experiencia de **hover en IDE** (VS Code, PhpStorm) con información
+útil en español, sin añadir ruido que duplique lo que el código ya declara.
 
-> **Regla de oro:** Si escribes `Auth::user()` y haces hover, debe aparecer
-> "Obtiene el usuario autenticado de la solicitud actual. Retorna null si no hay sesión activa."
-> en **español**, no tener que ir a la documentación de Laravel.
+> **Regla de oro:** Si el nombre del método + sus type hints + los imports son
+> suficientes para entender qué hace → **no lleva docblock.**
 
 ---
 
 ## 1. Idioma
 
-**TODO** el PHPDoc debe estar en **español**, incluyendo:
-- Descripciones de clase
-- `@param`, `@return`, `@property`, `@method`
-- Comentarios `//` inline
-
-No se acepta inglés, ni siquiera en métodos triviales como `register()` o `boot()`.
+Descripciones de clase y comentarios de decisión en **español**.
+Tags (`@param`, `@return`, `@property`) **sin descripción** si el nombre
+de la variable ya es auto-explicativo.
 
 ---
 
-## 2. Tipos de archivos y su documentación
+## 2. Lo ÚNICO obligatorio: Models (`app/Models/`)
 
-### 2.1 Models (`app/Models/`)
+El IDE no puede inferir columnas de BD ni relaciones Eloquent.
 
-Cada modelo debe tener un bloque PHPDoc **encima de la clase** con:
-
-```
+```php
 /**
- * Descripción corta de qué representa este modelo.
+ * Representa un club con sus miembros, roles y canales.
  *
- * Párrafo opcional con contexto adicional (relaciones clave,
- * comportamiento especial, reglas de negocio).
+ * @property string      $uuid        UUID único (PK)
+ * @property string      $name        Nombre público del club
+ * @property string|null $description Descripción opcional
+ * @property int         $permissions Bitmask de permisos
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  *
- * @property string $uuid        // Clave primaria
- * @property string $name         Descripción del campo
- * @property int    $permissions  Bitmask de permisos
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ClubMember> $members
+ * @property-read Collection<int, ClubMember>  $members
+ * @property-read Collection<int, ClubChannel> $channels
  * @property-read int|null $members_count
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ModelName newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ModelName newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ModelName query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ModelName whereUuid($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ModelName whereName($value)
  */
-class ModelName extends Model
+class Club extends Model
 ```
 
 **Reglas:**
-- `@property` por cada columna de la migración (incluyendo PK, FKs, timestamps, softdeletes).
+- `@property` por cada columna de migración (PK, FKs, timestamps, soft-deletes).
+- Marcadores `(PK)` y `(FK)` al final de la descripción.
 - `@property-read` por cada relación definida en el modelo.
-- `@method` para los `where{Columna}()` queries básicas + `newModelQuery()`, `newQuery()`, `query()`.
-- Si el modelo usa **Sanctum** (`HasApiTokens`), agregar `createToken()`, `currentAccessToken()`, `tokens()`, `tokenCan()` con sus descripciones en español.
-- **NO** poner `@property` redundantes si ya existen en `_ide_helper_models.php`.
-
-### 2.2 Controllers (`app/Http/Controllers/`)
-
-Cada controlador debe tener un bloque PHPDoc **encima de la clase**:
-
-```
-/**
- * Descripción corta de qué recursos/adminstra este controlador.
- *
- * Contexto adicional de las operaciones que realiza.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\Illuminate\Http\Request $request)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\SomeRequest $request)
- * @method \Illuminate\Http\JsonResponse show(string $uuid)
- * @method \Illuminate\Http\JsonResponse update(\App\Http\Requests\SomeRequest $request, string $uuid)
- * @method \Illuminate\Http\JsonResponse destroy(string $uuid)
- */
-class SomeController extends Controller
-```
-
-**Reglas:**
-- `@package App\Http\Controllers` siempre.
-- `@method` por cada método público del controlador, con su Request class específica si usa una.
-- Si el controlador está **vacío** (stub), igual poner la descripción de clase para que al hacer hover se sepa qué va ahí.
-- Controlador base `Controller.php` igual debe tener su descripción.
-
-### 2.3 Resources (`app/Http/Resources/`)
-
-Cada Resource debe tener:
-
-```
-/**
- * Transforma un modelo en una respuesta JSON estándar.
- *
- * @package App\Http\Resources
- *
- * @property-read \App\Models\SomeModel $resource
- *
- * @return array<string, mixed>
- */
-class SomeResource extends JsonResource
-{
-    public function toArray(Request $request): array
-    {
-        return [
-            'uuid' => $this->uuid,
-            // ...
-        ];
-    }
-}
-```
-
-**Reglas:**
-- `@package App\Http\Resources` siempre.
-- `@property-read \App\Models\XXX $resource` para que el IDE sepa qué modelo se está transformando.
-- `@return array<string, mixed>` en `toArray()`.
-
-### 2.4 Form Requests (`app/Http/Requests/`)
-
-Cada Request debe tener:
-
-```
-/**
- * Describe qué valida este formulario/petición.
- *
- * @package App\Http\Requests\SomeGroup
- *
- * @return array<string, mixed>
- */
-class SomeRequest extends FormRequest
-{
-    public function rules(): array
-    {
-        return [...];
-    }
-}
-```
-
-**Reglas:**
-- `@package` con el namespace del grupo (`App\Http\Requests\Auth`, `App\Http\Requests\Club`, etc.).
-- `@return array<string, mixed>` en `rules()`.
-- Si el request tiene `authenticate()`, `prepareForValidation()`, `after()`, ponerles `@return void` o `@return array` según corresponda.
-
-### 2.5 Providers, Jobs, Events, etc.
-
-Cada clase debe tener al menos un bloque de descripción:
-
-```
-/**
- * Descripción de qué hace esta clase.
- */
-class SomeClass
-```
-
-- Métodos públicos documentados con `@param` y `@return`.
-- Métodos privados solo si la lógica no es obvia.
+- Usar short names (`Carbon`, `Collection`) — los imports resuelven.
+- **NO** poner `@method whereX()` ni `newQuery()` — `ide-helper` los genera.
 
 ---
 
-## 3. Archivos especiales de IDE
+## 3. Class-level PHPDoc (opcional, recomendado)
 
-### 3.1 `_ide_helper.php`
+Para cualquier clase que se beneficie de tener contexto al hacer hover.
 
-**NO TOCAR.** Es autogenerado por `php artisan ide-helper:generate`.
-Cualquier cambio se pierde al regenerar.
+### Controllers
 
-### 3.2 `_ide_helper_models.php`
-
-**NO TOCAR.** Es autogenerado por `php artisan ide-helper:models --nowrite`.
-Cualquier cambio se pierde al regenerar.
-
-### 3.3 `_ide_helper_es.php`
-
-**Archivo manual, nunca se sobrescribe.**
-
-Contiene documentación en español para todas las fachadas de Laravel
-que más se usan en el proyecto:
-- `Auth`, `Hash`, `Cache`, `Storage`, `DB`, `Event`, `Broadcast`, `Log`
-- `Validator`, `Response`, `Route`, `Request`, `Config`, `Gate`, `Crypt`
-- `Mail`, `Queue`, `Bus`, `Pipeline`, `Redis`, `Notification`, `File`
-- `Collection`, `Stringable`, `Http` (Cliente HTTP)
-
-Cada fachada está en su namespace `Illuminate\Support\Facades` con
-`@method` para todos sus métodos públicos y descripciones en español
-que aparecen al hacer hover.
-
-> **IMPORTANTE:** Si agregas un nuevo método de Laravel que no esté
-> documentado aquí, agrégalo a `_ide_helper_es.php` con su descripción
-> en español para que aparezca al hacer hover.
-
----
-
-## 4. Reglas de Formato
-
-### 4.1 Descripciones de clase
-
-```
+```php
 /**
- * Una línea de qué es esto.
- *
- * Párrafo opcional con más contexto.
+ * CRUD de categorías dentro de un club. Filtra canales privados
+ * según permiso VIEW_CHANNELS del usuario autenticado.
  */
+class ClubCategoryController extends Controller
 ```
 
-- Primera línea: resumen corto de una oración.
-- Segunda línea: blank.
-- Tercera línea+: contexto adicional si es necesario.
+- 1-2 líneas describiendo el **propósito**, no las operaciones.
+- **Sin** `@method` — `php artisan ide-helper:generate` los crea.
 
-### 4.2 Tags `@param` y `@return`
+### Resources, Requests, Providers, Policies, etc.
 
-```
- * @param string $uuid UUID del club a buscar
- * @return \Illuminate\Http\JsonResponse
-```
-
-- Siempre usar el tipo completo (`\App\Models\Club` no `Club`).
-- Usar `string` para UUIDs.
-- Usar `int` para bitmasks.
-- La descripción del `@param` debe ser corta pero informativa.
-
-### 4.3 Tags `@property` en Models
-
-```
- * @property string $uuid UUID único del club (PK)
- * @property string $name Nombre público del club
- * @property \Illuminate\Support\Carbon|null $created_at
+```php
+/**
+ * Transforma un ClubMember en respuesta JSON estándar.
+ */
+class ClubMemberResource extends JsonResource
 ```
 
-- Las **PKs** deben decir "(PK)" al final de la descripción.
-- Las **FKs** deben decir "(FK)" al final.
-- Los timestamps usar el tipo completo `\Illuminate\Support\Carbon|null`.
-
-### 4.4 Tags `@method`
-
-Para queries Eloquent:
-```
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ModelName whereEmail($value)
+```php
+/**
+ * Valida los datos al crear un canal dentro de una categoría.
+ */
+class StoreClubChannelRequest extends FormRequest
 ```
 
-Para métodos reales del controlador:
-```
- * @method \Illuminate\Http\JsonResponse index(\Illuminate\Http\Request $request)
+```php
+/**
+ * Registra policies del dominio de clubs y carga migraciones modulares.
+ */
+class AppServiceProvider extends ServiceProvider
 ```
 
 ---
 
-## 5. Lo que NO se debe hacer
+## 4. Excepciones: cuándo SÍ documentar un método
 
-1. **NO** poner `@return void` en métodos que retornan algo obvio como `register()`.
-2. **NO** documentar métodos privados a menos que tengan lógica compleja.
-3. **NO** poner `@package` en models (solo en controllers, resources y requests).
-4. **NO** mezclar español e inglés en el mismo bloque.
-5. **NO** modificar `_ide_helper.php` ni `_ide_helper_models.php` (se regeneran).
-6. **NO** usar emojis en el código o PHPDoc.
-7. **NO** poner comentarios redundantes (`$i++ // incrementa i`).
+Solo cuando la lógica **no es obvia** desde la firma:
 
----
+| Situación | Ejemplo |
+|---|---|
+| Regla de negocio críptica | `// Owner bypass: el creador del club siempre tiene todos los permisos` |
+| Efecto secundario no evidente | `// Soft-delete: no se elimina físicamente, se marca deleted_at` |
+| Decisión arquitectónica | `// Excepción: este es el único endpoint público sin membresía` |
+| Algoritmo complejo | `// Búsqueda binaria sobre bitmask de permisos` |
 
-## 6. Verificación
+**Usar `//` inline**, no PHPDoc block. Ejemplo real de Vyntra:
 
-Después de documentar, verificar con:
-
-```bash
-php -l app/Models/SomeModel.php
-php artisan route:list --path=api
+```php
+// Excepción arquitectónica: endpoint público sin membresía.
+// Solo devuelve datos básicos + flag is_member.
 ```
 
-Y abrir el archivo en VS Code para confirmar que al hacer hover sobre
-cualquier método/propiedad aparezca la descripción en español.
+---
+
+## 5. Lo que NO se debe hacer (lista negra)
+
+1. **NO** `@param` sin descripción o con descripción obvia (`$user Usuario autenticado`).
+2. **NO** `@return` si el type hint de PHP ya lo declara (`: bool`, `: JsonResponse`).
+3. **NO** `@package` — el namespace ya dice dónde vive la clase.
+4. **NO** `@method` en controllers — `ide-helper:generate` lo hace automático.
+5. **NO** describir métodos cuyo nombre ya lo explica (`viewAny`, `destroy`, `rules`).
+6. **NO** FQN en tipos (`\App\Models\User`). Usar imports y short names.
+7. **NO** docblocks en métodos triviales (getters, setters, boot, register vacíos).
+8. **NO** modificar `_ide_helper.php` ni `_ide_helper_models.php`.
+9. **NO** emojis.
 
 ---
 
-## 7. Resumen del estado actual (30 mayo 2026)
+## 6. Formato estándar de un docblock
 
-| Tipo | Archivos | Cobertura |
-|------|----------|-----------|
-| Models | 12 | 100% (incluye User con Sanctum methods) |
-| Controllers | 16 | 100% (4 implementados + 12 stubs) |
-| Resources | 11 | 100% |
-| Requests | 15 | 100% |
-| Providers | 1 | 100% |
-| `_ide_helper_es.php` | 1 | 17 fachadas + Collection + Stringable + Http |
-| **TOTAL** | **56** | **100%** |
+```php
+/**
+ * Clase: 1-2 líneas de propósito.
+ *
+ * Contexto adicional solo si hay algo no obvio (opcional).
+ *
+ * @property string $uuid UUID único (PK)  ← solo en Models
+ * @property ...
+ */
+class Foo
+```
+
+Sin líneas en blanco innecesarias. Sin tags repetitivos.
+
+---
+
+## 7. Resumen visual
+
+| Cosa | Lleva docblock? |
+|---|---|
+| Modelo con columnas + relaciones | ✅ `@property` y `@property-read` |
+| Controlador con propósito no obvio | ✅ 1-2 líneas de clase |
+| Policy, Resource, Request, Provider | ✅ 1 línea de clase |
+| Método con lógica compleja/arquitectónica | ✅ `// inline comment` |
+| `@param` que duplica type hint | ❌ |
+| `@return` que duplica type hint | ❌ |
+| `@package` en cualquier clase | ❌ |
+| `@method` en controllers | ❌ (ide-helper) |
+| Método privado trivial | ❌ |

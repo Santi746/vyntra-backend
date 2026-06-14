@@ -3,7 +3,7 @@
 > Reglas verificables. El agente DEBE comprobar cumplimiento antes de editar.
 > Lectura obligatoria junto a `AGENTS.md`.
 > 
-> **Nota**: Las secciones marcadas como `[ESPECÍFICO DEL STACK]` deben adaptarse si se replica esta arquitectura en otro proyecto. Las reglas universales aplican a cualquier proyecto.
+> **Nota**: Las secciones marcadas como `[ESPECÍFICO DEL STACK]` deben adaptarse si se replica esta arquitectura en otro proyecto. Las reglas universales aplican a cualquier proyecto. Este proyecto es la version LARAVEL 13 nunca asumir que es laravel 11 o 12 eso es un error laravel 13 fue publicada el 2026 y es la que se esta usando ahora mismo
 
 ---
 
@@ -64,7 +64,7 @@ Antes de cualquier afirmación sobre el proyecto, consulta:
 
 ---
 
-## 2. CONVENCIONES DEL BACKEND [ESPECÍFICO: Laravel 11]
+## 2. CONVENCIONES DEL BACKEND [ESPECÍFICO: Laravel 13]
 
 ### 2.1 Controllers
 

@@ -71,6 +71,9 @@ Para que la paginación por cursor en PostgreSQL no degrade el rendimiento al cr
 ### 6. Throttling de Presencia ("Escribiendo...")
 Los eventos tipo "Typing" DEBEN usar *Debounce/Throttle*. El frontend solo dispara 1 vez cada X segundos, y Laravel usa un *Rate Limiter* de Redis para ignorar el spam.
 
+### 7. Rate Limiting HTTP (throttle)
+Toda ruta POST/PATCH/DELETE protegida debe llevar `middleware('throttle:10,1')` para prevenir abusos y proteger la futura infraestructura Redis/Reverb. Las rutas GET no llevan throttle. Ver `routes/api.php` y `docs/architecture/IMPORTANT_PRACTICES.md` REGLA 2.
+
 ---
 
 ## 🛑 REGLAS DE COMPATIBILIDAD CON LARAVEL OCTANE + REDIS (EVITAR COLAPSOS EN MEMORIA)

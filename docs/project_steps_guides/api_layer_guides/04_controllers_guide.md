@@ -1,9 +1,13 @@
-# 🧠 Guía: Controllers (Controladores)
+# 🧠 Guía: Controllers (Controladores) ✅
+
+> **Completado.** 16 Controllers creados siguiendo el patrón coordinador + FormRequest + Resource.
 
 **Objetivo:** Crear los Controladores de Vyntra que actúan como el coordinador de cada flujo de la API. Cada Controller recibe la petición ya validada, utiliza los Modelos para interactuar con PostgreSQL, y delega la respuesta a un API Resource.
 
 > [!IMPORTANT]
-> **Regla de Oro:** El Controller es el coordinador, NO el obrero. No escribe SQL a mano, no valida datos, no formatea JSON. Solo dirige el tráfico entre capas.
+> **Regla de Oro:** El Controller es el coordinador, NO el obrero. No escribe SQL a mano, no valida datos, no formatea JSON, no hace broadcast() síncrono. Solo dirige el tráfico entre capas.
+
+> **REGLA 3** de `docs/architecture/IMPORTANT_PRACTICES.md`: El Controller se limita a validar → autorizar → ejecutar DB → dispatch(Event/Job) → cargar relaciones → responder Resource. Prohibido broadcast() síncrono.
 
 ---
 
@@ -96,6 +100,12 @@ public function store(StoreChannelMessageRequest $request, ClubChannel $channel)
 
     $message->load('sender');
 
+    // Despachar evento para WebSockets (futuro Reverb/Horizon).
+    // NUNCA hacer broadcast() síncrono aquí — delegar a ShouldBroadcast + ShouldQueue.
+    // if ($message->wasRecentlyCreated) {
+    //     MessageSentEvent::dispatch($message);
+    // }
+
     // Si el mensaje ya existía → 200. Si es nuevo → 201
     $status = $message->wasRecentlyCreated ? 201 : 200;
 
@@ -111,6 +121,7 @@ public function store(StoreChannelMessageRequest $request, ClubChannel $channel)
 - `$message->wasRecentlyCreated` → boolean que dice si `firstOrCreate` acaba de crear el registro o lo encontró existente
 - `$status = $message->wasRecentlyCreated ? 201 : 200` → 201 si es nuevo, 200 si ya existía
 - Los campos que forman parte de la condición de unicidad (como `client_uuid`) van en el **primer array**, NO en los valores
+- **REGLA 3**: Después de DB write y antes de Resource, dispatchar un Event/Job. Nunca `broadcast()` síncrono dentro del Controller.
 
 ---
 
@@ -411,6 +422,8 @@ return response()->noContent(); // 204 sin body
 - [ ] Usar siempre Route Model Binding en los parámetros (`Club $club` en vez de `$id`)
 - [ ] Usar `Gate::authorize()` antes de modificar o eliminar datos
 - [ ] Cargar relaciones con `->with()` o `->load()` ANTES de pasar al Resource
+- [ ] Después de DB write y antes de Resource: `dispatch(new XxxEvent(...))` o `XxxJob::dispatch()`
+- [ ] **Prohibido** `broadcast()` síncrono dentro del Controller — delegar a Event + ShouldQueue
 - [ ] Retornar el código HTTP correcto: `200` lectura/actualización, `201` creación, `204` eliminación sin body
 - [ ] Para idempotencia: usar `firstOrCreate()` con `client_uuid`, NO `try/catch` con `QueryException`
 - [ ] Para paginación: usar `cursorPaginate()`, NO `paginate()` estándar

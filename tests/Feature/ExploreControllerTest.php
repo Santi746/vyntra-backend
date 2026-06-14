@@ -19,7 +19,7 @@ class ExploreControllerTest extends TestCase
         Club::factory()->count(3)->create(['owner_uuid' => $owner->uuid]);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new ExploreController();
+        $controller = new ExploreController;
         $response = $controller->index(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -33,7 +33,7 @@ class ExploreControllerTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new ExploreController();
+        $controller = new ExploreController;
         $response = $controller->index(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -48,7 +48,7 @@ class ExploreControllerTest extends TestCase
         Club::factory()->create(['owner_uuid' => $owner->uuid]);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new ExploreController();
+        $controller = new ExploreController;
         $response = $controller->index(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -59,7 +59,7 @@ class ExploreControllerTest extends TestCase
 
     public function test_index_works_without_authentication(): void
     {
-        $controller = new ExploreController();
+        $controller = new ExploreController;
         $response = $controller->index(request());
 
         $response->assertStatus(200)

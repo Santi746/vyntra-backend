@@ -2,30 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Search\SearchRequest;
+use App\Http\Resources\ClubResource;
+use App\Http\Resources\UserResource;
 use App\Models\Club;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use App\Http\Resources\ClubResource;
-use App\Http\Resources\UserResource;
-use App\Http\Requests\Search\SearchRequest;
 
 /**
  * Controlador de búsqueda global.
- *
- * Busca clubes y usuarios por texto con filtro de tipo.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\App\Http\Requests\Search\SearchRequest $request)
  */
 class SearchController extends Controller
 {
-    /**
-     * Busca clubes y/o usuarios según el filtro especificado.
-     *
-     * @param SearchRequest $request Query params: q (requerido), filter (opcional: all|clubs|users)
-     * @return JsonResponse
-     */
+    // Siempre devuelve ambos buckets (`clubs` y `users`) para evitar errores en el frontend.
     public function index(SearchRequest $request): JsonResponse
     {
         $query = $request->validated('q');
@@ -55,16 +44,9 @@ class SearchController extends Controller
         ]);
     }
 
-    /**
-     * Construye la estructura paginada estándar para un conjunto de resultados.
-     *
-     * @param mixed $paginator Resultado de cursorPaginate o null
-     * @param string $resourceClass FQN del Resource a usar
-     * @return array|null
-     */
     private function paginatedResponse($paginator, string $resourceClass): ?array
     {
-        if (!$paginator) {
+        if (! $paginator) {
             return null;
         }
 

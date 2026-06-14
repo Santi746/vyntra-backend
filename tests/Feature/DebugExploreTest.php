@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Models\Club;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
 
 class DebugExploreTest extends TestCase
 {
@@ -21,8 +21,8 @@ class DebugExploreTest extends TestCase
 
         $response = $this->getJson('/api/explore');
 
-        echo "\nStatus: " . $response->getStatusCode();
-        echo "\nContent: " . $response->getContent();
+        echo "\nStatus: ".$response->getStatusCode();
+        echo "\nContent: ".$response->getContent();
 
         $response->assertStatus(200);
     }

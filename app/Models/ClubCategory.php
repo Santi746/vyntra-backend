@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Categoría de canales dentro de un club.
@@ -20,20 +21,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property int $sort_order Orden de visualización en la UI
  * @property bool $is_private Si la categoría es privada
  * @property string|null $client_uuid UUID de deduplicación del frontend
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubCategory newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubCategory newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|ClubCategory query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable(['club_uuid', 'name', 'sort_order', 'is_private', 'client_uuid'])]
 class ClubCategory extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'club_categories';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Una Categoría pertenece a un único Club.
@@ -56,7 +54,7 @@ class ClubCategory extends Model
     {
         return [
             'is_private' => 'boolean',
-            'sort_order' => 'integer'
+            'sort_order' => 'integer',
         ];
     }
 }

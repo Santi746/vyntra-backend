@@ -2,43 +2,50 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
+/**
+ * Modelo de membresía de usuario en un club.
+ *
+ * Representa la pertenencia de un usuario a un club, con soporte
+ * para soft-deletes, roles asociados y relaciones N:1 con User y Club.
+ *
+ *
+ * @property string $uuid
+ * @property string $user_uuid
+ * @property string $club_uuid
+ * @property Carbon|null $deleted_at
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property-read User $user
+ * @property-read Club $club
+ * @property-read Collection<int, ClubRole> $roles
+ */
 #[Fillable(['user_uuid', 'club_uuid'])]
 class ClubMember extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
-    // La tabla asignada es club_members
     protected $table = 'club_members';
+
     protected $primaryKey = 'uuid';
 
-
-    // PERSPECTIVA: Una Membresía pertenece a un único Usuario.
-    // FK ORIGEN: La llave foránea 'user_uuid' está físicamente en esta tabla 'club_members'.
-    // SQL: SELECT * FROM users WHERE uuid = club_members.user_uuid LIMIT 1;
     public function user()
     {
         return $this->belongsTo(User::class, 'user_uuid', 'uuid');
     }
 
-    // PERSPECTIVA: Una Membresía pertenece a un único Club.
-    // FK ORIGEN: La llave foránea 'club_uuid' está físicamente en esta tabla 'club_members'.
-    // SQL: SELECT * FROM clubs WHERE uuid = club_members.club_uuid LIMIT 1;
     public function club()
     {
         return $this->belongsTo(Club::class, 'club_uuid', 'uuid');
     }
 
-    // PERSPECTIVA: Un Miembro tiene muchos Roles asociados mediante una relación Muchos a Muchos.
-    // TABLA PIVOTE: 'club_member_roles' (conecta club_member_uuid con role_uuid).
-    // SQL: SELECT club_roles.* FROM club_roles 
-    //      INNER JOIN club_member_roles ON club_member_roles.role_uuid = club_roles.uuid
-    //      WHERE club_member_roles.club_member_uuid = club_members.uuid;
     public function roles()
     {
         return $this->belongsToMany(ClubRole::class, 'club_member_roles', 'club_member_uuid', 'role_uuid');

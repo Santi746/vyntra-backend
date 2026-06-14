@@ -2,18 +2,18 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
+use App\Models\ChannelMessage;
 use App\Models\Club;
 use App\Models\ClubCategory;
 use App\Models\ClubChannel;
-use App\Models\ChannelMessage;
-use App\Models\Friendship;
-use App\Models\Notification;
 use App\Models\ClubMember;
-use App\Models\ClubRole;
 use App\Models\ClubMemberRole;
+use App\Models\ClubRole;
 use App\Models\DmConversation;
 use App\Models\DmMessage;
+use App\Models\Friendship;
+use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -44,13 +44,13 @@ class DatabaseSeeder extends Seeder
             $receiver = $users->where('uuid', '!=', $sender->uuid)->random();
 
             // Verificar que no exista ya esta combinación de amistad
-            $exists = Friendship::where(function($query) use ($sender, $receiver) {
+            $exists = Friendship::where(function ($query) use ($sender, $receiver) {
                 $query->where('sender_uuid', $sender->uuid)->where('receiver_uuid', $receiver->uuid);
-            })->orWhere(function($query) use ($sender, $receiver) {
+            })->orWhere(function ($query) use ($sender, $receiver) {
                 $query->where('sender_uuid', $receiver->uuid)->where('receiver_uuid', $sender->uuid);
             })->exists();
 
-            if (!$exists) {
+            if (! $exists) {
                 Friendship::factory()->create([
                     'sender_uuid' => $sender->uuid,
                     'receiver_uuid' => $receiver->uuid,
@@ -141,7 +141,7 @@ class DatabaseSeeder extends Seeder
                     if ($channel->type === 'text') {
                         // Mensajes del canal enviados por miembros de este club
                         $clubMembersUuids = ClubMember::where('club_uuid', $club->uuid)->pluck('user_uuid')->toArray();
-                        
+
                         ChannelMessage::factory(8)->create([
                             'club_channel_uuid' => $channel->uuid,
                             'sender_uuid' => fn () => fake()->randomElement($clubMembersUuids),

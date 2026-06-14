@@ -1,4 +1,6 @@
-# 🎨 Guía: API Resources (Formateadores de Respuesta JSON)
+# 🎨 Guía: API Resources (Formateadores de Respuesta JSON) ✅
+
+> **Completado.** 11 Resources creados con formato consistente y contrato API documentado.
 
 **Objetivo:** Crear los API Resources que transforman los modelos Eloquent (objetos PHP) en el JSON limpio, seguro y estable que espera el frontend de Vyntra.
 
@@ -65,13 +67,15 @@ class MessageResource extends JsonResource
     {
         return [
             // Campos del modelo ChannelMessage
-            'uuid'                => $this->uuid,
-            'client_uuid'         => $this->client_uuid,
+            // IMPORTANTE: TODOS los UUIDs, FKs y client_uuid deben castearse a (string)
+            // para evitar pérdida de precisión al ser consumidos por JavaScript (Next.js).
+            'uuid'                => (string) $this->uuid,
+            'client_uuid'         => (string) $this->client_uuid,
             'content'             => $this->content,
             'status'              => $this->status,
-            'parent_message_uuid' => $this->parent_message_uuid,
-            'created_at'          => $this->created_at->toISOString(),
-            'updated_at'          => $this->updated_at->toISOString(),
+            'parent_message_uuid' => (string) $this->parent_message_uuid,
+            'created_at'          => $this->created_at->toIso8601String(),
+            'updated_at'          => $this->updated_at->toIso8601String(),
 
             // Relación anidada: incluir datos del remitente
             // whenLoaded() evita el error N+1: solo incluye los datos si ya se
@@ -166,7 +170,28 @@ class MessageResource extends JsonResource
 
 ---
 
-### 4. El poder de `whenLoaded()` — Evitar el problema N+1
+#### ⚠️ REGLA 1: Serialización Segura de Identificadores
+
+Todo UUID, llave foránea o `client_uuid` expuesto en un Resource DEBE castearse a `(string)`. JavaScript (Next.js) tiene un límite `MAX_SAFE_INTEGER` y los UUIDs sin castear pueden causar pérdida de precisión.
+
+**Correcto:**
+```php
+'uuid'       => (string) $this->uuid,
+'club_uuid'  => (string) $this->club_uuid,
+'client_uuid' => (string) $this->client_uuid,
+```
+
+**Incorrecto:**
+```php
+'uuid'       => $this->uuid,       // ❌ UUID crudo, sin castear
+'club_uuid'  => $this->club_uuid,  // ❌ FK sin castear
+```
+
+Esta regla aplica a TODOS los Resources del proyecto. Referencia: `docs/architecture/IMPORTANT_PRACTICES.md` REGLA 1.
+
+---
+
+## 5. El poder de `whenLoaded()` — Evitar el problema N+1
 
 > [!CAUTION]
 > **El problema N+1** es el error de rendimiento más común en backends ORM. Ocurre cuando cargas 50 mensajes y por cada mensaje el sistema hace una consulta SQL adicional para obtener el remitente, resultando en **51 consultas** en vez de 2.

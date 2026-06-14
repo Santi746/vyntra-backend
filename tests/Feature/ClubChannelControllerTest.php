@@ -2,10 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Club;
 use App\Models\ClubCategory;
 use App\Models\ClubChannel;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

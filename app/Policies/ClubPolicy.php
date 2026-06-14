@@ -6,21 +6,22 @@ use App\Enums\ClubPermission;
 use App\Models\Club;
 use App\Models\User;
 
+/**
+ * Permisos sobre clubes. Solo miembros pueden ver detalles;
+ * MANAGE_CLUB para editar; solo el owner puede eliminar.
+ *
+ * viewPrivateChannels tiene owner/ADMIN bypass via hasClubPermission.
+ */
 class ClubPolicy
 {
-    public function viewAny(User $user): bool
-    {
-        return true;
-    }
-
     public function view(User $user, Club $club): bool
     {
         return $club->members()->where('user_uuid', $user->uuid)->exists();
     }
 
-    public function create(User $user): bool
+    public function viewPrivateChannels(User $user, Club $club): bool
     {
-        return true;
+        return $user->hasClubPermission($club, ClubPermission::VIEW_CHANNELS);
     }
 
     public function update(User $user, Club $club): bool
@@ -28,13 +29,9 @@ class ClubPolicy
         return $user->hasClubPermission($club, ClubPermission::MANAGE_CLUB);
     }
 
+    // Owner-only: ni MANAGE_CLUB puede borrar el club.
     public function delete(User $user, Club $club): bool
     {
         return $club->owner_uuid === $user->uuid;
-    }
-
-    public function manageRoles(User $user, Club $club): bool
-    {
-        return $user->hasClubPermission($club, ClubPermission::MANAGE_ROLES);
     }
 }

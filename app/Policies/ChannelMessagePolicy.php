@@ -3,11 +3,14 @@
 namespace App\Policies;
 
 use App\Enums\ClubPermission;
-use App\Models\ChannelMessage;
 use App\Models\ClubChannel;
 use App\Models\ClubMember;
 use App\Models\User;
 
+/**
+ * Permisos sobre mensajes en canales de club. Solo miembros pueden leer;
+ * SEND_MESSAGES para escribir.
+ */
 class ChannelMessagePolicy
 {
     public function viewAny(User $user, ClubChannel $channel): bool

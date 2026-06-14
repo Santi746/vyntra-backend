@@ -17,7 +17,7 @@ class ClubCategoryFactory extends Factory
             'name' => fake()->randomElement(['Información', 'General', 'Comunidad', 'Gaming', 'Música']),
             'sort_order' => fake()->numberBetween(0, 10),
             'is_private' => fake()->boolean(10), // 10% de probabilidad de ser privada
-            
+
             'client_uuid' => fake()->uuid(),
 
             // Relación con Club

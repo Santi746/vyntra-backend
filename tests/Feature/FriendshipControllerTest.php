@@ -5,7 +5,12 @@ namespace Tests\Feature;
 use App\Http\Controllers\FriendshipController;
 use App\Models\Friendship;
 use App\Models\User;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -24,7 +29,7 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
         $response = $controller->index(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -44,7 +49,7 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
         $response = $controller->index(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -54,9 +59,9 @@ class FriendshipControllerTest extends TestCase
 
     public function test_index_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $this->expectException(AuthenticationException::class);
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
         $controller->index(request());
     }
 
@@ -71,7 +76,7 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
         $response = $controller->pending(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -98,7 +103,7 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
         $response = $controller->pending(request());
 
         $this->assertEquals(200, $response->getStatusCode());
@@ -108,9 +113,9 @@ class FriendshipControllerTest extends TestCase
 
     public function test_pending_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $this->expectException(AuthenticationException::class);
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
         $controller->pending(request());
     }
 
@@ -120,10 +125,10 @@ class FriendshipControllerTest extends TestCase
         $receiver = User::factory()->create();
         Sanctum::actingAs($sender);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => $receiver->uuid,
         ]);
 
@@ -148,12 +153,12 @@ class FriendshipControllerTest extends TestCase
         $receiver = User::factory()->create();
         Sanctum::actingAs($sender);
 
-        $clientUuid = \Illuminate\Support\Str::uuid()->toString();
+        $clientUuid = Str::uuid()->toString();
 
-        $controller = new FriendshipController();
+        $controller = new FriendshipController;
 
         // First request - creates friendship
-        $request1 = new \Illuminate\Http\Request();
+        $request1 = new Request;
         $request1->merge([
             'client_uuid' => $clientUuid,
             'receiver_uuid' => $receiver->uuid,
@@ -162,7 +167,7 @@ class FriendshipControllerTest extends TestCase
         $this->assertEquals(201, $response1->getStatusCode());
 
         // Second request - should return 200 (already exists)
-        $request2 = new \Illuminate\Http\Request();
+        $request2 = new Request;
         $request2->merge([
             'client_uuid' => $clientUuid,
             'receiver_uuid' => $receiver->uuid,
@@ -178,17 +183,17 @@ class FriendshipControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => $user->uuid,
         ]);
 
         try {
             $response = $controller->store($request);
             $this->assertEquals(422, $response->getStatusCode());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->assertTrue(true);
         }
     }
@@ -198,27 +203,27 @@ class FriendshipControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge([
-            'client_uuid' => \Illuminate\Support\Str::uuid()->toString(),
+            'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => 'nonexistent-uuid',
         ]);
 
         try {
             $response = $controller->store($request);
             $this->assertEquals(422, $response->getStatusCode());
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             $this->assertTrue(true);
         }
     }
 
     public function test_store_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $this->expectException(AuthenticationException::class);
 
-        $controller = new FriendshipController();
-        $controller->store(new \Illuminate\Http\Request());
+        $controller = new FriendshipController;
+        $controller->store(new Request);
     }
 
     public function test_respond_accepts_friendship_request(): void
@@ -232,8 +237,8 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($receiver);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge(['action' => 'accept']);
 
         $response = $controller->respond($request, $friendship->uuid);
@@ -257,8 +262,8 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($receiver);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge(['action' => 'decline']);
 
         $response = $controller->respond($request, $friendship->uuid);
@@ -282,8 +287,8 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($receiver);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge(['action' => 'reject']); // Legacy action
 
         $response = $controller->respond($request, $friendship->uuid);
@@ -301,14 +306,14 @@ class FriendshipControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge(['action' => 'accept']);
 
         try {
             $controller->respond($request, 'nonexistent-uuid');
             $this->fail('Expected ModelNotFoundException');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             $this->assertTrue(true);
         }
     }
@@ -325,14 +330,14 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user3);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge(['action' => 'accept']);
 
         try {
             $controller->respond($request, $friendship->uuid);
             $this->fail('Expected ModelNotFoundException');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             $this->assertTrue(true);
         }
     }
@@ -348,23 +353,23 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($sender);
 
-        $controller = new FriendshipController();
-        $request = new \Illuminate\Http\Request();
+        $controller = new FriendshipController;
+        $request = new Request;
         $request->merge(['action' => 'accept']);
 
         try {
             $controller->respond($request, $friendship->uuid);
             $this->fail('Expected ModelNotFoundException');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             $this->assertTrue(true);
         }
     }
 
     public function test_respond_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $this->expectException(AuthenticationException::class);
 
-        $controller = new FriendshipController();
-        $controller->respond(new \Illuminate\Http\Request(), 'some-uuid');
+        $controller = new FriendshipController;
+        $controller->respond(new Request, 'some-uuid');
     }
 }

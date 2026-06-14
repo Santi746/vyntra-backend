@@ -2,20 +2,14 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Friendship;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Resource para formatear una Amistad/Solicitud de Amistad en JSON.
  *
- * Tiene DOS formas de salida según las relaciones cargadas:
- *  - Si el controller carga `sender` Y `receiver`: devuelve datos centrados en el "amigo"
- *    (forma consumida por el sidebar de amigos y la lista de solicitudes pendientes).
- *  - Si NO carga ambas: devuelve la forma con `sender` y `receiver` anidados.
- *
- * @package App\Http\Resources
- *
- * @property-read \App\Models\Friendship $resource
+ * @property-read Friendship $resource
  */
 class FriendshipResource extends JsonResource
 {
@@ -28,21 +22,21 @@ class FriendshipResource extends JsonResource
                 : $this->sender;
 
             return [
-                'uuid' => $friend->uuid,
+                'uuid' => (string) $friend->uuid,
                 'username' => $friend->username,
-                'display_name' => trim(($friend->first_name ?? '') . ' ' . ($friend->last_name ?? '')),
+                'display_name' => trim(($friend->first_name ?? '').' '.($friend->last_name ?? '')),
                 'avatar_url' => $friend->avatar_url,
                 'is_online' => (bool) $friend->is_online,
-                'friendship_uuid' => $this->uuid,
+                'friendship_uuid' => (string) $this->uuid,
                 'status' => $this->status,
             ];
         }
 
         return [
-            'uuid' => $this->uuid,
+            'uuid' => (string) $this->uuid,
             'status' => $this->status,
-            'created_at' => $this->created_at->toISOString(),
-            'updated_at' => $this->updated_at->toISOString(),
+            'created_at' => $this->created_at->toIso8601String(),
+            'updated_at' => $this->updated_at->toIso8601String(),
             'sender' => new UserResource($this->whenLoaded('sender')),
             'receiver' => new UserResource($this->whenLoaded('receiver')),
         ];

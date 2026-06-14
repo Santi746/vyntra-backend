@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Mensaje directo dentro de una conversación privada.
@@ -22,20 +23,17 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
  * @property string $content Contenido del mensaje
  * @property string $status Estado del mensaje (sent, edited)
  * @property string $client_uuid UUID de deduplicación del frontend
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property \Illuminate\Support\Carbon|null $deleted_at
- *
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DmMessage newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DmMessage newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|DmMessage query()
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property Carbon|null $deleted_at
  */
 #[Fillable(['dm_conversation_uuid', 'sender_uuid', 'parent_message_uuid', 'content', 'status', 'client_uuid'])]
 class DmMessage extends Model
 {
-    use HasUuids, SoftDeletes, HasFactory;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $table = 'dm_messages';
+
     protected $primaryKey = 'uuid';
 
     // PERSPECTIVA: Un Mensaje de MD pertenece a una única Conversación de MD.
@@ -74,7 +72,7 @@ class DmMessage extends Model
     {
         return [
             'client_uuid' => 'string',
-            'status' => 'string'
+            'status' => 'string',
         ];
     }
 }

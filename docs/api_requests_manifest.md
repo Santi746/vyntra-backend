@@ -609,6 +609,7 @@
 | **FormRequest** | No aplica (GET) |
 | **Estado** | ❌ NO IMPLEMENTADO |
 | **Requiere Broadcast** | ❌ |
+| **Requiere Membresía** | ✅ Sí (`Gate::authorize('view', $club)`) |
 
 **Response (200):**
 ```json
@@ -627,6 +628,44 @@
     "is_verified": "boolean",
     "created_at": "string",
     "updated_at": "string"
+  }
+}
+```
+
+> **Nota sobre privacidad:** Las categorías y canales con `is_private=true` se filtran para usuarios sin `VIEW_CHANNELS`. El owner y los usuarios con `ADMINISTRATOR` siempre ven todos los canales.
+
+---
+
+### CLUB-02b: Obtener Preview de un Club (no requiere membresía)
+| Campo | Valor |
+|:---|:---|
+| **Método** | `GET` |
+| **Ruta** | `/api/clubs/{club_uuid}/preview` |
+| **Frontend Service** | `ClubService.getClubPreview(club_uuid)` |
+| **FormRequest** | No aplica (GET) |
+| **Estado** | ✅ IMPLEMENTADO |
+| **Requiere Broadcast** | ❌ |
+| **Requiere Auth** | ✅ Sí (`auth:sanctum`) |
+| **Requiere Membresía** | ❌ No (única excepción en clubs) |
+
+> **Excepción arquitectónica:** Este es el único endpoint de club que no requiere membresía. Devuelve solo datos básicos: name, banner, avatar, descripción, conteo de miembros, y un flag `is_member` calculado. Está dentro de `auth:sanctum` para que pueda devolver `is_member`, pero NO tiene `Gate::authorize`.
+
+**Response (200):**
+```json
+{
+  "status": "success",
+  "data": {
+    "uuid": "string",
+    "name": "string",
+    "description": "string|null",
+    "category_tag": "string",
+    "avatar_url": "string|null",
+    "banner_url": "string|null",
+    "is_verified": "boolean",
+    "members_count": "integer",
+    "online_count": "integer",
+    "is_member": "boolean",
+    "created_at": "string"
   }
 }
 ```
@@ -1084,20 +1123,17 @@
   "client_uuid": "required|uuid",
   "name": "required|string|max:50",
   "color": "required|string|max:7",
-  "permissions": "required|array",
-  "permissions.manage_channels": "required|boolean",
-  "permissions.manage_roles": "required|boolean",
-  "permissions.manage_members": "required|boolean",
-  "permissions.send_messages": "required|boolean",
-  "permissions.manage_club": "required|boolean"
+  "permissions": "required|integer|min:0"
 }
 ```
+
+> **`permissions` es un integer (bitmask)**, no un objeto. Ver `app/Enums/ClubPermission.php` para la lista completa de bits.
 
 **Response (201):**
 ```json
 {
   "status": "success",
-  "data": { "uuid": "string", "club_uuid": "string", "name": "string", "color": "string", "is_fixed": false, "permissions": { ... } }
+  "data": { "uuid": "string", "club_uuid": "string", "name": "string", "color": "string", "is_fixed": false, "permissions": 1023 }
 }
 ```
 
@@ -1122,12 +1158,7 @@
   "client_uuid": "required|uuid",
   "name": "sometimes|string|max:50",
   "color": "sometimes|string|max:7",
-  "permissions": "sometimes|array",
-  "permissions.manage_channels": "sometimes|boolean",
-  "permissions.manage_roles": "sometimes|boolean",
-  "permissions.manage_members": "sometimes|boolean",
-  "permissions.send_messages": "sometimes|boolean",
-  "permissions.manage_club": "sometimes|boolean"
+  "permissions": "sometimes|integer|min:0"
 }
 ```
 

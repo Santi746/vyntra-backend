@@ -2,11 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Models\Club;
 use App\Models\ClubMember;
 use App\Models\ClubMemberRole;
 use App\Models\ClubRole;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

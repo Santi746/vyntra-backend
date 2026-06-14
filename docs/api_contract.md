@@ -102,7 +102,37 @@ Estructura compartida para mensajes de canal de club y mensajes directos (DM).
 - **Club:** `{ uuid, name, description|null, avatar_url|null, banner_url|null, owner_uuid, category_tag, created_at, updated_at }`
 - **Category:** `{ uuid, club_uuid, name, sort_order, is_private, created_at, updated_at }`
 - **Channel:** `{ uuid, category_uuid, name, description|null, type: "text|voice", sort_order, is_private, created_at, updated_at }`
-- **ClubRole:** `{ uuid, club_uuid, name, color: "#HEXHEX", permissions: { manage_channels, manage_roles, manage_members, send_messages, manage_club }, created_at, updated_at }`
+- **ClubRole:** `{ uuid, club_uuid, name, color: "#HEXHEX", permissions: integer (bitmask — ver `app/Enums/ClubPermission.php`), created_at, updated_at }`
+
+#### Permisos bitwise
+
+El campo `permissions` de `ClubRole` es un **integer (bitmask)**. Cada permiso es un bit:
+
+| Bit | Constante PHP | Constante Frontend | Descripción |
+|-----|---------------|---------------------|-------------|
+| `1 << 0`  | `ClubPermission::VIEW_CHANNELS`    | `PERMISSIONS.VIEW_CHANNELS`    | Ver canales (incluye privados) |
+| `1 << 1`  | `ClubPermission::MANAGE_CHANNELS`  | `PERMISSIONS.MANAGE_CHANNELS`  | Crear/editar/eliminar canales y categorías |
+| `1 << 2`  | `ClubPermission::MANAGE_ROLES`     | `PERMISSIONS.MANAGE_ROLES`     | Crear/editar/eliminar roles |
+| `1 << 3`  | `ClubPermission::MANAGE_CLUB`      | `PERMISSIONS.MANAGE_CLUB`      | Editar ajustes del club |
+| `1 << 4`  | `ClubPermission::CREATE_INVITE`    | `PERMISSIONS.CREATE_INVITE`    | Crear invitaciones |
+| `1 << 5`  | `ClubPermission::CHANGE_NICKNAME`  | `PERMISSIONS.CHANGE_NICKNAME`  | Cambiar nickname propio |
+| `1 << 6`  | `ClubPermission::MANAGE_NICKNAMES` | `PERMISSIONS.MANAGE_NICKNAMES` | Cambiar nickname de otros |
+| `1 << 7`  | `ClubPermission::KICK_MEMBERS`     | `PERMISSIONS.KICK_MEMBERS`     | Expulsar miembros |
+| `1 << 8`  | `ClubPermission::BAN_MEMBERS`      | `PERMISSIONS.BAN_MEMBERS`      | Banear miembros |
+| `1 << 9`  | `ClubPermission::SEND_MESSAGES`    | `PERMISSIONS.SEND_MESSAGES`    | Enviar mensajes en canales |
+| `1 << 10` | `ClubPermission::EMBED_LINKS`      | `PERMISSIONS.EMBED_LINKS`      | Insertar links en mensajes |
+| `1 << 11` | `ClubPermission::ATTACH_FILES`     | `PERMISSIONS.ATTACH_FILES`     | Adjuntar archivos |
+| `1 << 12` | `ClubPermission::ADD_REACTIONS`    | `PERMISSIONS.ADD_REACTIONS`    | Añadir reacciones |
+| `1 << 13` | `ClubPermission::MANAGE_MESSAGES`  | `PERMISSIONS.MANAGE_MESSAGES`  | Borrar/editar mensajes ajenos |
+| `1 << 14` | `ClubPermission::MENTION_EVERYONE` | `PERMISSIONS.MENTION_EVERYONE` | Mencionar @everyone |
+| `1 << 30` | `ClubPermission::ADMINISTRATOR`    | `PERMISSIONS.ADMINISTRATOR`    | Bypass total (todos los permisos) |
+
+Los bits están definidos en `app/Enums/ClubPermission.php` (backend) y `src/shared/constants/permissions.js` (frontend). Cualquier adición requiere actualizar ambos archivos.
+
+**Operaciones bitwise:**
+- `OR (|)` para acumular permisos de varios roles en un miembro.
+- `AND (&)` para verificar si un permiso está presente.
+- `XOR (^)` para toggle (activar/desactivar) un permiso individual.
 
 ---
 

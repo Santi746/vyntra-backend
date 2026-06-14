@@ -3,26 +3,17 @@
 namespace App\Http\Requests\User;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
- * UpdateUserRequest
- * 
  * Gestiona la validación para la actualización parcial del perfil y credenciales del usuario autenticado.
- * 
- * @package App\Http\Requests\User
+ *
  * @method string method() HTTP PATCH
  */
 class UpdateUserRequest extends FormRequest
 {
-    /**
-     * Determina si el usuario está autorizado a realizar esta petición.
-     * Permitido para cualquier usuario autenticado, que solo puede actualizar su propio perfil.
-     * 
-     * @return bool
-     */
     public function authorize(): bool
     {
         return true;
@@ -32,8 +23,6 @@ class UpdateUserRequest extends FormRequest
      * Prepara los datos antes de validar.
      *
      * Mapea new_password a password para que el modelo lo hashee automáticamente.
-     *
-     * @return void
      */
     protected function prepareForValidation(): void
     {
@@ -44,11 +33,6 @@ class UpdateUserRequest extends FormRequest
         }
     }
 
-    /**
-     * Obtiene las reglas de validación que se aplican a la petición.
-     * 
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
@@ -77,8 +61,8 @@ class UpdateUserRequest extends FormRequest
     public function after(): array
     {
         return [
-            function (\Illuminate\Validation\Validator $validator) {
-                if ($this->has('current_password') && !Hash::check($this->current_password, $this->user()->password)) {
+            function (Validator $validator) {
+                if ($this->has('current_password') && ! Hash::check($this->current_password, $this->user()->password)) {
                     $validator->errors()->add('current_password', 'La contraseña actual no es correcta.');
                 }
             },

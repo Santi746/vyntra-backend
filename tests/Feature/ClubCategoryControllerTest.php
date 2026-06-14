@@ -4,8 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Club;
 use App\Models\ClubCategory;
-use App\Models\ClubMember;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

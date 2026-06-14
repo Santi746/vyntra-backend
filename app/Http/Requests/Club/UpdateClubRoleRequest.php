@@ -5,31 +5,17 @@ namespace App\Http\Requests\Club;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * UpdateClubRoleRequest
- * 
  * Gestiona la validación para la actualización parcial de un rol de club existente.
- * 
- * @package App\Http\Requests\Club
+ *
  * @method string method() HTTP PATCH
  */
 class UpdateClubRoleRequest extends FormRequest
 {
-    /**
-     * Determina si el usuario está autorizado a realizar esta petición.
-     * En el controlador se verificará si el miembro tiene permisos de 'manage_roles'.
-     * 
-     * @return bool
-     */
     public function authorize(): bool
     {
         return true;
     }
 
-    /**
-     * Obtiene las reglas de validación que se aplican a la petición.
-     * 
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
         return [
@@ -41,11 +27,6 @@ class UpdateClubRoleRequest extends FormRequest
         ];
     }
 
-    /**
-     * Obtiene los mensajes personalizados para los errores de validación.
-     * 
-     * @return array<string, string>
-     */
     public function messages(): array
     {
         return [

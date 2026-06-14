@@ -2,32 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Chat\StoreDmConversationRequest;
+use App\Http\Resources\DmConversationResource;
 use App\Models\DmConversation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Resources\DmConversationResource;
-use App\Http\Requests\Chat\StoreDmConversationRequest;
 
 /**
  * Controlador de conversaciones DM.
- *
- * Lista, muestra y crea conversaciones uno-a-uno entre usuarios.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\Illuminate\Http\Request $request)
- * @method \Illuminate\Http\JsonResponse show(\App\Models\DmConversation $dmConversation, \Illuminate\Http\Request $request)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\Chat\StoreDmConversationRequest $request)
  */
 class DmConversationController extends Controller
 {
-    /**
-     * Lista las conversaciones del usuario autenticado.
-     *
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function index(Request $request): JsonResponse
     {
         $conversations = DmConversation::where('user_one_uuid', $request->user()->uuid)
@@ -48,13 +34,6 @@ class DmConversationController extends Controller
         ]);
     }
 
-    /**
-     * Muestra una conversación DM si el usuario pertenece a ella.
-     *
-     * @param DmConversation $dmConversation Conversación a mostrar
-     * @param Request $request
-     * @return JsonResponse
-     */
     public function show(DmConversation $dmConversation, Request $request): JsonResponse
     {
         Gate::authorize('view', $dmConversation);
@@ -70,15 +49,7 @@ class DmConversationController extends Controller
         ]);
     }
 
-    /**
-     * Crea una conversación DM (idempotente).
-     *
-     * Ordena los UUIDs alfabéticamente para cumplir con la
-     * constraint única de la migración.
-     *
-     * @param StoreDmConversationRequest $request Validación con recipient_uuid
-     * @return JsonResponse 201 si se creó, 200 si ya existía
-     */
+    // Ordena los UUIDs alfabéticamente para cumplir la constraint única.
     public function store(StoreDmConversationRequest $request): JsonResponse
     {
         $user = $request->user()->uuid;

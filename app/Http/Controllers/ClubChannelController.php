@@ -2,40 +2,34 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Club\StoreClubChannelRequest;
+use App\Http\Requests\Club\UpdateClubChannelRequest;
+use App\Http\Resources\ClubChannelResource;
 use App\Models\Club;
 use App\Models\ClubChannel;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Resources\ClubChannelResource;
-use App\Http\Requests\Club\StoreClubChannelRequest;
-use App\Http\Requests\Club\UpdateClubChannelRequest;
 
 /**
- * Controlador de canales de club.
- *
  * CRUD de canales dentro de las categorías de un club.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\Club\StoreClubChannelRequest $request, \App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse update(\App\Http\Requests\Club\UpdateClubChannelRequest $request, \App\Models\Club $club, \App\Models\ClubChannel $channel)
- * @method \Illuminate\Http\Response destroy(\App\Models\Club $club, \App\Models\ClubChannel $channel)
  */
 class ClubChannelController extends Controller
 {
-    /**
-     * Lista los canales de un club.
-     *
-     * @param Club $club
-     * @return JsonResponse
-     */
     public function index(Club $club): JsonResponse
     {
-        $channels = ClubChannel::whereHas('category', fn($q) => $q->where('club_uuid', $club->uuid))
-            ->orderBy('sort_order')
-            ->cursorPaginate(15);
+        Gate::authorize('viewAny', [ClubChannel::class, $club]);
+
+        $canSeePrivate = Gate::allows('viewPrivateChannels', $club);
+
+        $channelsQuery = ClubChannel::whereHas('category', fn ($q) => $q->where('club_uuid', $club->uuid))
+            ->orderBy('sort_order');
+
+        if (! $canSeePrivate) {
+            $channelsQuery->where('is_private', false);
+        }
+
+        $channels = $channelsQuery->cursorPaginate(15);
 
         return response()->json([
             'data' => ClubChannelResource::collection($channels->items()),
@@ -49,12 +43,14 @@ class ClubChannelController extends Controller
     /**
      * Crea un canal en un club (idempotente).
      *
-     * @param StoreClubChannelRequest $request Validación del canal
-     * @param Club $club Club al que pertenece el canal
+     * @param  StoreClubChannelRequest  $request  Validación del canal
+     * @param  Club  $club  Club al que pertenece el canal
      * @return JsonResponse 201 si se creó, 200 si ya existía
      */
     public function store(StoreClubChannelRequest $request, Club $club): JsonResponse
     {
+        Gate::authorize('create', [ClubChannel::class, $club]);
+
         $validated = $request->validated();
 
         $maxSortOrder = ClubChannel::where('category_uuid', $validated['category_uuid'])->max('sort_order') ?? 0;
@@ -78,10 +74,7 @@ class ClubChannelController extends Controller
     /**
      * Actualiza los datos de un canal.
      *
-     * @param UpdateClubChannelRequest $request
-     * @param Club $club
-     * @param ClubChannel $channel Canal a actualizar
-     * @return JsonResponse
+     * @param  ClubChannel  $channel  Canal a actualizar
      */
     public function update(UpdateClubChannelRequest $request, Club $club, ClubChannel $channel): JsonResponse
     {
@@ -96,9 +89,7 @@ class ClubChannelController extends Controller
     /**
      * Elimina un canal (soft delete).
      *
-     * @param Club $club
-     * @param ClubChannel $channel Canal a eliminar
-     * @return Response
+     * @param  ClubChannel  $channel  Canal a eliminar
      */
     public function destroy(Club $club, ClubChannel $channel): Response
     {

@@ -2,19 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Club\AssignClubRoleRequest;
 use App\Models\Club;
 use App\Models\ClubMember;
 use App\Models\ClubMemberRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Requests\Club\AssignClubRoleRequest;
 
 /**
- * Controlador de asignación de roles a miembros.
- *
- * Permite asignar y remover roles de un miembro específico
- * dentro de un club. La relación muchos-a-muchos entre
- * miembros y roles se gestiona aquí.
+ * Asignación y remoción de roles a miembros de un club.
  */
 class ClubMemberRoleController extends Controller
 {

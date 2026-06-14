@@ -2,38 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Club\StoreClubRoleRequest;
+use App\Http\Requests\Club\UpdateClubRoleRequest;
+use App\Http\Resources\ClubRoleResource;
 use App\Models\Club;
 use App\Models\ClubRole;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Gate;
-use App\Http\Resources\ClubRoleResource;
-use App\Http\Requests\Club\StoreClubRoleRequest;
-use App\Http\Requests\Club\UpdateClubRoleRequest;
 
 /**
  * Controlador de roles de club.
- *
- * CRUD de roles personalizables dentro de un club.
- *
- * @package App\Http\Controllers
- *
- * @method \Illuminate\Http\JsonResponse index(\App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse store(\App\Http\Requests\Club\StoreClubRoleRequest $request, \App\Models\Club $club)
- * @method \Illuminate\Http\JsonResponse update(\App\Http\Requests\Club\UpdateClubRoleRequest $request, \App\Models\Club $club)
- * @method \Illuminate\Http\Response destroy(\App\Models\Club $club, \App\Models\ClubRole $role)
  */
 class ClubRoleController extends Controller
 {
-    /**
-     * Lista los roles de un club.
-     *
-     * @param Club $club
-     * @return JsonResponse
-     */
     public function index(Club $club): JsonResponse
     {
+        Gate::authorize('viewAny', [ClubRole::class, $club]);
+
         $roles = ClubRole::where('club_uuid', $club->uuid)
             ->orderBy('sort_order')
             ->cursorPaginate(15);
@@ -47,21 +34,17 @@ class ClubRoleController extends Controller
         ]);
     }
 
-    /**
-     * Crea un rol en el club (idempotente).
-     *
-     * @param StoreClubRoleRequest $request Validación del rol
-     * @param Club $club
-     * @return JsonResponse 201 si se creó, 200 si ya existía
-     */
+    // Crea un rol en el club (idempotente por client_uuid).
     public function store(StoreClubRoleRequest $request, Club $club): JsonResponse
     {
+        Gate::authorize('create', [ClubRole::class, $club]);
+
         $validated = $request->validated();
 
         $role = ClubRole::firstOrCreate(
             [
                 'club_uuid' => $club->uuid,
-                'client_uuid' => $validated['client_uuid']
+                'client_uuid' => $validated['client_uuid'],
             ],
             [
                 'name' => $validated['name'],
@@ -78,24 +61,16 @@ class ClubRoleController extends Controller
         ], $role->wasRecentlyCreated ? 201 : 200);
     }
 
-    /**
-     * Actualiza los datos de un rol.
-     *
-     * El UUID del rol se obtiene del body (campo `uuid`), no de la URL.
-     *
-     * @param UpdateClubRoleRequest $request Validación con uuid, client_uuid y campos a actualizar
-     * @param Club $club
-     * @return JsonResponse
-     */
+    // El UUID del rol se obtiene del body (`uuid`), no de la URL.
     public function update(UpdateClubRoleRequest $request, Club $club): JsonResponse
     {
-        Gate::authorize('update', $club);
-
         $validated = $request->validated();
 
         $role = ClubRole::where('club_uuid', $club->uuid)
             ->where('uuid', $validated['uuid'])
             ->firstOrFail();
+
+        Gate::authorize('update', [ClubRole::class, $club, $role]);
 
         $role->update(Arr::except($validated, ['uuid', 'client_uuid']));
 
@@ -105,16 +80,10 @@ class ClubRoleController extends Controller
         ]);
     }
 
-    /**
-     * Elimina un rol (soft delete).
-     *
-     * @param Club $club
-     * @param ClubRole $role Rol a eliminar
-     * @return Response
-     */
+    // Elimina un rol (soft delete).
     public function destroy(Club $club, ClubRole $role): Response
     {
-        Gate::authorize('update', $club);
+        Gate::authorize('delete', [ClubRole::class, $club, $role]);
         $role->delete();
 
         return response()->noContent();

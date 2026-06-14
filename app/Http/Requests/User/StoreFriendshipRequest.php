@@ -12,7 +12,6 @@ use Illuminate\Validation\Rule;
  * deduplicación en tiempo real. La columna client_uuid en la tabla friendships
  * tiene restricción UNIQUE compuesta (sender_uuid, client_uuid).
  *
- * @package App\Http\Requests\User
  *
  * @return array<string, mixed>
  */

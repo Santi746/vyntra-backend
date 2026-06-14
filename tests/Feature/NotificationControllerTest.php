@@ -2,11 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\NotificationController;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class NotificationControllerTest extends TestCase
@@ -17,15 +15,14 @@ class NotificationControllerTest extends TestCase
     {
         $user = User::factory()->create();
         Notification::factory()->count(3)->create(['user_uuid' => $user->uuid]);
-        Sanctum::actingAs($user);
 
-        $controller = new NotificationController();
-        $response = $controller->index(request());
+        $this->actingAs($user, 'sanctum');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
+        $response = $this->getJson('/api/notifications');
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'meta' => ['next_cursor', 'per_page']]);
+        $this->assertCount(3, $response->json('data'));
     }
 
     public function test_index_returns_only_user_notifications(): void
@@ -34,22 +31,20 @@ class NotificationControllerTest extends TestCase
         $otherUser = User::factory()->create();
         Notification::factory()->count(2)->create(['user_uuid' => $user->uuid]);
         Notification::factory()->count(3)->create(['user_uuid' => $otherUser->uuid]);
-        Sanctum::actingAs($user);
 
-        $controller = new NotificationController();
-        $response = $controller->index(request());
+        $this->actingAs($user, 'sanctum');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertCount(2, $data['data']);
+        $response = $this->getJson('/api/notifications');
+
+        $response->assertStatus(200);
+        $this->assertCount(2, $response->json('data'));
     }
 
     public function test_index_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $response = $this->getJson('/api/notifications');
 
-        $controller = new NotificationController();
-        $controller->index(request());
+        $response->assertStatus(401);
     }
 
     public function test_mark_as_read_updates_notification(): void
@@ -59,14 +54,13 @@ class NotificationControllerTest extends TestCase
             'user_uuid' => $user->uuid,
             'is_read' => false,
         ]);
-        Sanctum::actingAs($user);
 
-        $controller = new NotificationController();
-        $response = $controller->markAsRead(request(), $notification);
+        $this->actingAs($user, 'sanctum');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $response = $this->patchJson("/api/notifications/{$notification->uuid}/read");
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'success']);
 
         $this->assertDatabaseHas('notifications', [
             'uuid' => $notification->uuid,
@@ -82,32 +76,31 @@ class NotificationControllerTest extends TestCase
             'user_uuid' => $otherUser->uuid,
             'is_read' => false,
         ]);
-        Sanctum::actingAs($user);
 
-        $controller = new NotificationController();
+        $this->actingAs($user, 'sanctum');
 
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
-        $controller->markAsRead(request(), $notification);
+        $response = $this->patchJson("/api/notifications/{$notification->uuid}/read");
+
+        $response->assertStatus(403);
     }
 
     public function test_mark_as_read_requires_authentication(): void
     {
-        $this->expectException(\Illuminate\Auth\AuthenticationException::class);
+        $notification = Notification::factory()->create();
 
-        $controller = new NotificationController();
-        $controller->markAsRead(request(), new Notification());
+        $response = $this->patchJson("/api/notifications/{$notification->uuid}/read");
+
+        $response->assertStatus(401);
     }
 
     public function test_mark_as_read_returns_404_for_nonexistent_notification(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
 
-        $nonExistentNotification = new Notification(['uuid' => 'nonexistent-uuid', 'user_uuid' => $user->uuid]);
+        $this->actingAs($user, 'sanctum');
 
-        $controller = new NotificationController();
+        $response = $this->patchJson('/api/notifications/nonexistent-uuid/read');
 
-        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
-        $controller->markAsRead(request(), $nonExistentNotification);
+        $response->assertStatus(404);
     }
 }

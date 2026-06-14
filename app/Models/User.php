@@ -3,23 +3,26 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\ClubPermission;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
-use App\Enums\ClubPermission;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Concerns\HasUuids; // Trait obligatorio para UUIDs
+use Laravel\Sanctum\PersonalAccessToken;
+
+// Trait obligatorio para UUIDs
 
 /**
  * Modelo principal de usuario del sistema.
- *
- * Representa un usuario registrado en Vyntra. Puede pertenecer a clubs,
- * enviar mensajes directos, recibir notificaciones en tiempo real y
- * autenticarse mediante tokens Sanctum.
  *
  * @property string $uuid // Clave primaria
  * @property string $username
@@ -27,7 +30,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids; // Trait obligatorio para UU
  * @property string $first_name
  * @property string $last_name
  * @property string $email
- * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $bio
  * @property string|null $avatar_url
@@ -35,38 +38,14 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids; // Trait obligatorio para UU
  * @property string|null $location
  * @property bool $is_online
  * @property string|null $remember_token
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
+ * @property-read DatabaseNotificationCollection<int, DatabaseNotification> $notifications
  * @property-read int|null $notifications_count
- * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User newModelQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User newQuery()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User query()
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereAvatarUrl($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereBannerUrl($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereBio($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCreatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmail($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmailVerifiedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereFirstName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereIsOnline($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastName($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLocation($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUserTag($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUsername($value)
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUuid($value)
  * @property string|null $deleted_at
- * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereDeletedAt($value)
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read Collection<int, PersonalAccessToken> $tokens
  * @property-read int|null $tokens_count
- * @method \Laravel\Sanctum\NewAccessToken createToken(string $name, array $abilities = ['*']) Crea un token de acceso personal para el usuario
- * @method \Laravel\Sanctum\PersonalAccessToken|null currentAccessToken() Obtiene el token de acceso asociado a la solicitud actual
- * @method \Illuminate\Database\Eloquent\Relations\MorphMany<static, \Laravel\Sanctum\PersonalAccessToken> tokens() Relación polimórfica con los tokens Sanctum del usuario
- * @method bool tokenCan(string $ability) Verifica si el token de acceso actual posee una habilidad específica
+ *
  * @mixin \Eloquent
  */
 #[Fillable(['username', 'user_tag', 'first_name', 'last_name', 'email', 'password', 'bio', 'avatar_url', 'banner_url', 'location', 'is_online'])]
@@ -74,17 +53,13 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids; // Trait obligatorio para UU
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasApiTokens, Notifiable, SoftDeletes, HasUuids;
+    use HasApiTokens, HasFactory, HasUuids, Notifiable, SoftDeletes;
 
     // Configurar explícitamente que la llave primaria es uuid
     protected $table = 'users'; // La tabla se llama users
+
     protected $primaryKey = 'uuid';
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [
@@ -143,9 +118,7 @@ class User extends Authenticatable
      *   3. Suma los `permissions` de todos los roles asignados al miembro con OR bitwise
      *      y compara con AND contra el permiso solicitado.
      *
-     * @param  Club   $club
-     * @param  int    $permission Constante de \App\Enums\ClubPermission
-     * @return bool
+     * @param  int  $permission  Constante de \App\Enums\ClubPermission
      */
     public function hasClubPermission(Club $club, int $permission): bool
     {
@@ -158,7 +131,7 @@ class User extends Authenticatable
             ->with(['roles' => fn ($q) => $q->select('club_roles.uuid', 'club_roles.permissions')])
             ->first();
 
-        if (!$membership) {
+        if (! $membership) {
             return false;
         }
 

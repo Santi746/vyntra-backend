@@ -1,4 +1,6 @@
-# ⚙️ Guía: Instalación de API + Sanctum (Autenticación)
+# ⚙️ Guía: Instalación de API + Sanctum (Autenticación) ✅
+
+> **Completado.** API habilitada, Sanctum configurado, migraciones de tokens activas.
 
 **Objetivo:** Habilitar el soporte de rutas API en Laravel y configurar Sanctum como sistema de autenticación por tokens para el frontend (Next.js).
 
