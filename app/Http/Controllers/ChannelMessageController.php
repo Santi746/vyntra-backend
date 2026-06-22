@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Chat\MessageCreated;
+use App\Events\Chat\MessageDeleted;
+use App\Events\Chat\MessageUpdated;
 use App\Http\Requests\Chat\StoreChannelMessageRequest;
+use App\Http\Requests\Chat\UpdateChannelMessageRequest;
 use App\Http\Resources\MessageResource;
 use App\Models\ChannelMessage;
 use App\Models\ClubChannel;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -53,9 +58,41 @@ class ChannelMessageController extends Controller
 
         $message->load('sender');
 
+        if ($message->wasRecentlyCreated) {
+            MessageCreated::dispatch($message);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => new MessageResource($message),
         ], $message->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function update(UpdateChannelMessageRequest $request, ClubChannel $channel, ChannelMessage $message): JsonResponse
+    {
+        Gate::authorize('update', $message);
+
+        $validated = $request->validated();
+        $message->update($validated);
+
+        MessageUpdated::dispatch($message);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => new MessageResource($message),
+        ]);
+    }
+
+    public function destroy(ClubChannel $channel, ChannelMessage $message): Response
+    {
+        Gate::authorize('delete', $message);
+
+        $messageUuid = (string) $message->uuid;
+        $channelUuid = (string) $message->club_channel_uuid;
+        $message->delete();
+
+        MessageDeleted::dispatch($messageUuid, $channelUuid);
+
+        return response()->noContent();
     }
 }

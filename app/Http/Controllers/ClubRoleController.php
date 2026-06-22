@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Club\RoleCreated;
+use App\Events\Club\RoleDeleted;
+use App\Events\Club\RoleUpdated;
 use App\Http\Requests\Club\StoreClubRoleRequest;
 use App\Http\Requests\Club\UpdateClubRoleRequest;
 use App\Http\Resources\ClubRoleResource;
@@ -55,6 +58,10 @@ class ClubRoleController extends Controller
             ]
         );
 
+        if ($role->wasRecentlyCreated) {
+            RoleCreated::dispatch($role);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => new ClubRoleResource($role),
@@ -74,6 +81,8 @@ class ClubRoleController extends Controller
 
         $role->update(Arr::except($validated, ['uuid', 'client_uuid']));
 
+        RoleUpdated::dispatch($role);
+
         return response()->json([
             'status' => 'success',
             'data' => new ClubRoleResource($role),
@@ -84,7 +93,10 @@ class ClubRoleController extends Controller
     public function destroy(Club $club, ClubRole $role): Response
     {
         Gate::authorize('delete', [ClubRole::class, $club, $role]);
+
         $role->delete();
+
+        RoleDeleted::dispatch((string) $role->uuid, (string) $club->uuid);
 
         return response()->noContent();
     }

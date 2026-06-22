@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Club\MemberJoined;
+use App\Events\Club\MemberLeft;
 use App\Http\Resources\ClubMemberResource;
 use App\Models\Club;
 use App\Models\ClubMember;
@@ -44,6 +46,10 @@ class ClubMemberController extends Controller
             ]
         );
 
+        if ($membership->wasRecentlyCreated) {
+            MemberJoined::dispatch($club->uuid, $request->user()->uuid);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => new ClubMemberResource($membership->load('user')),
@@ -59,7 +65,10 @@ class ClubMemberController extends Controller
             ->where('uuid', $member)
             ->firstOrFail();
 
+        $userUuid = (string) $membership->user_uuid;
         $membership->delete();
+
+        MemberLeft::dispatch($club->uuid, $userUuid);
 
         return response()->noContent();
     }

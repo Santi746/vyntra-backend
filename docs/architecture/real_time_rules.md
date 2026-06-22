@@ -59,10 +59,73 @@ La columna `client_uuid` en PostgreSQL NO solo debe estar indexada, debe tener u
 ### 3. Broadcasting via Colas (Queues)
 NUNCA hacer `broadcast()` de forma síncrona en el controlador. Siempre debe usar `ShouldBroadcast` implementando colas. El HTTP debe devolver `200 OK` rápido, y el WebSocket procesarse en un worker en segundo plano (vía Redis/Database Queues).
 
-### 4. Payloads Inteligentes en WebSockets (Evitar Auto-DDoS)
-No todos los eventos de tiempo real se transmiten igual. Debes dividirlos en dos:
-- **Eventos de Alta Velocidad (Chat / Mensajería):** Deben emitir el **payload completo** (el JSON idéntico al API Resource, ej: `MessageResource` con remitente anidado) para que el frontend pinte el mensaje al instante sin consultar al servidor. Emitir solo el ID obligaría a cientos de clientes a hacer peticiones HTTP simultáneas, tirando el servidor.
-- **Eventos Estructurales Pesados (Clubes, Canales, Roles):** Deben emitir un **payload minimalista** (ej: `{ "club_uuid": "...", "action": "UPDATED" }`). El frontend invalidará silenciosamente su caché en segundo plano.
+### 4. Payloads Inteligentes en WebSockets (Principio YAGNI aplicado)
+
+> **Principio base (YAGNI — You Aren't Gonna Need It):** Solo enviar al cliente lo que va a usar para esa acción específica. Si en duda, enviar menos — siempre podés agregar más después. Sacar campos públicos de una API es breaking change.
+
+**Pregunta clave antes de definir cualquier payload:**
+> *"¿El cliente va a usar ESTE campo? ¿Lo necesita para esta acción específica?"*
+
+No todos los eventos de tiempo real se transmiten igual. Se dividen en 2 categorías principales, y la decisión de qué mandar adentro de cada payload se basa en **qué necesita el cliente para esa acción**, no en un dogma de "siempre Resource" o "siempre array manual":
+
+#### Categoría 1: Payload completo (Resource)
+
+- **Cuándo:** El cliente necesita el objeto entero para renderizarlo sin hacer otra llamada HTTP (ahorra ancho de banda de N requests simultáneas).
+- **Ejemplos:** Mensajes de chat, mensajes directos, notificaciones nuevas, eventos de creación/actualización estructural.
+- **Implementación:** `'d' => (new MessageResource($this->message))->resolve()`
+
+#### Categoría 2: Payload mínimo (array manual)
+
+- **Cuándo:** El cliente solo necesita saber QUÉ CAMBIÓ o QUÉ ACCIÓN tomar, no el objeto entero.
+- **Subcasos:**
+  - **Delete:** `{uuid, action: 'delete'}` — el cliente solo necesita QUÉ borrar
+  - **Update parcial:** `{uuid, campo_modificado}` — el cliente solo necesita QUÉ CAMBIÓ
+  - **Social/Relaciones:** `{user_uuid, role_uuid, action}` — no hay modelo único
+
+#### Anti-patrones
+
+**❌ Mandar el Resource completo en eventos de Delete:**
+```php
+// El cliente solo necesita saber QUÉ borrar, no el objeto entero
+'d' => (new CategoryResource($this->category))->resolve(),
+```
+
+**✅ Array manual con `action`:**
+```php
+// El cliente recibe solo lo que necesita para esta acción
+'d' => [
+    'uuid' => (string) $this->category->uuid,
+    'action' => 'delete',
+],
+```
+
+**❌ Cargar TODAS las relaciones en un Resource sin `whenLoaded()`:**
+```php
+// Wasted bandwidth si el cliente no las usa
+return [
+    'uuid' => $this->uuid,
+    'user' => new UserResource($this->user), // siempre se carga
+];
+```
+
+**✅ `whenLoaded()` para relaciones opcionales:**
+```php
+// Solo se serializa si fue cargada explícitamente
+return [
+    'uuid' => $this->uuid,
+    'user' => new UserResource($this->whenLoaded('user')),
+];
+```
+
+#### Discord hace lo mismo (validación externa)
+
+Discord usa el formato `{t, d}` en TODOS sus eventos, pero el contenido de `d` varía:
+- `MESSAGE_CREATE` → objeto mensaje completo
+- `MESSAGE_DELETE` → `{id, channel_id, guild_id}` (mínimo)
+- `PRESENCE_UPDATE` → `{user, status}` (parcial)
+- `TYPING_START` → `{channel_id, user_id, timestamp}` (ultra mínimo)
+
+Referencia: `docs/architecture/mandatory_patterns.md` sección 18 (YAGNI) para más detalles.
 
 ### 5. Índices Compuestos Obligatorios para Cursor
 Para que la paginación por cursor en PostgreSQL no degrade el rendimiento al crecer las tablas:

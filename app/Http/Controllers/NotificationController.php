@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\User\NotificationRead;
 use App\Http\Resources\NotificationResource;
 use App\Models\Notification;
 use Illuminate\Http\JsonResponse;
@@ -33,6 +34,8 @@ class NotificationController extends Controller
         Gate::authorize('update', $notification);
 
         $notification->update(['is_read' => true]);
+
+        NotificationRead::dispatch($notification);
 
         return response()->json([
             'status' => 'success',

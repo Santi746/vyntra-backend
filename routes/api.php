@@ -78,7 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ============================================================
     // RUTAS DE ESCRITURA (POST/PATCH/DELETE) — Rate limited
     // ============================================================
-    Route::middleware('throttle:10,1')->group(function () {
+    Route::middleware('throttle:60,1')->group(function () {
 
         // -- Autenticación --
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -120,9 +120,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // -- Mensajes --
         Route::post('/channels/{channel}/messages', [ChannelMessageController::class, 'store']);
+        Route::patch('/channels/{channel}/messages/{message}', [ChannelMessageController::class, 'update']);
+        Route::delete('/channels/{channel}/messages/{message}', [ChannelMessageController::class, 'destroy']);
 
         // -- DM --
         Route::post('/dm-conversations', [DmConversationController::class, 'store']);
         Route::post('/dm-conversations/{dm_conversation}/messages', [DmMessageController::class, 'store']);
+        Route::patch('/dm-conversations/{dm_conversation}/messages/{message}', [DmMessageController::class, 'update']);
+        Route::delete('/dm-conversations/{dm_conversation}/messages/{message}', [DmMessageController::class, 'destroy']);
     });
 });
