@@ -1,13 +1,27 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md", "rules.md", "docs/architecture/mandatory_patterns.md"],
+  "instructions": ["rules.md", "docs/architecture/mandatory_patterns.md", "AGENTS.md", "docs/architecture/hitl_protocol.md", "PIN.md"],
   "agent": {
     "build": {
-      "model": "opencode/nemotron-3-ultra-free"
+      "model": "opencode/nemotron-3-ultra-free",
+      "permission": {
+        "edit": "allow"
+      }
+    },
+    "browser": {
+      "model": "opencode-go/deepseek-v4-flash"
+    }
+  },
+   "mcp": {
+    "hitl-proxy": {
+      "type": "local",
+      "command": ["node", "./hitl-proxy/src/index.js"],
+      "enabled": true
     }
   },
   "permission": {
-    "edit": "allow",
+    "edit": "deny",
+    "write": "deny",
     "webfetch": "ask",
     "skill": {
       "laravel-scalability": "allow",

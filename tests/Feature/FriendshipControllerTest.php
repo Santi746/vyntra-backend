@@ -2,15 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\FriendshipController;
 use App\Models\Friendship;
 use App\Models\User;
-use Illuminate\Auth\AuthenticationException;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -22,20 +17,17 @@ class FriendshipControllerTest extends TestCase
     {
         $user = User::factory()->create();
         $friend = User::factory()->create();
-        Friendship::factory()->count(3)->create([
+        Friendship::factory()->create([
             'sender_uuid' => $user->uuid,
             'receiver_uuid' => $friend->uuid,
             'status' => 'accepted',
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $response = $controller->index(request());
+        $response = $this->getJson('/api/user/friends');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'meta']);
     }
 
     public function test_index_returns_only_accepted_friendships(): void
@@ -49,53 +41,43 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $response = $controller->index(request());
+        $response = $this->getJson('/api/user/friends');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertCount(0, $data['data']);
+        $response->assertStatus(200);
+        $this->assertCount(0, $response->json('data'));
     }
 
     public function test_index_requires_authentication(): void
     {
-        $this->expectException(AuthenticationException::class);
-
-        $controller = new FriendshipController;
-        $controller->index(request());
+        $this->getJson('/api/user/friends')->assertStatus(401);
     }
 
     public function test_pending_returns_pending_requests_with_cursor_pagination(): void
     {
         $user = User::factory()->create();
         $sender = User::factory()->create();
-        Friendship::factory()->count(3)->create([
+        Friendship::factory()->create([
             'sender_uuid' => $sender->uuid,
             'receiver_uuid' => $user->uuid,
             'status' => 'pending',
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $response = $controller->pending(request());
+        $response = $this->getJson('/api/user/friend-requests');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'meta']);
     }
 
     public function test_pending_returns_only_received_requests(): void
     {
         $user = User::factory()->create();
         $otherUser = User::factory()->create();
-        // Request sent BY user (should not appear)
         Friendship::factory()->create([
             'sender_uuid' => $user->uuid,
             'receiver_uuid' => $otherUser->uuid,
             'status' => 'pending',
         ]);
-        // Request received BY user (should appear)
         Friendship::factory()->create([
             'sender_uuid' => $otherUser->uuid,
             'receiver_uuid' => $user->uuid,
@@ -103,20 +85,15 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $response = $controller->pending(request());
+        $response = $this->getJson('/api/user/friend-requests');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertCount(1, $data['data']);
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
     }
 
     public function test_pending_requires_authentication(): void
     {
-        $this->expectException(AuthenticationException::class);
-
-        $controller = new FriendshipController;
-        $controller->pending(request());
+        $this->getJson('/api/user/friend-requests')->assertStatus(401);
     }
 
     public function test_store_sends_friendship_request_and_returns_201(): void
@@ -125,20 +102,13 @@ class FriendshipControllerTest extends TestCase
         $receiver = User::factory()->create();
         Sanctum::actingAs($sender);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge([
+        $response = $this->postJson('/api/user/friend-requests', [
             'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => $receiver->uuid,
         ]);
 
-        $response = $controller->store($request);
-
-        $statusCode = $response->getStatusCode();
-        $this->assertTrue(in_array($statusCode, [201, 200]));
-
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $response->assertStatus(201);
+        $response->assertJson(['status' => 'success']);
 
         $this->assertDatabaseHas('friendships', [
             'sender_uuid' => $sender->uuid,
@@ -147,35 +117,24 @@ class FriendshipControllerTest extends TestCase
         ]);
     }
 
-    public function test_store_is_idempotent_returns_200_on_existing_client_uuid(): void
+    public function test_store_is_idempotent_returns_200_on_existing_request(): void
     {
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
         Sanctum::actingAs($sender);
 
-        $clientUuid = Str::uuid()->toString();
-
-        $controller = new FriendshipController;
-
-        // First request - creates friendship
-        $request1 = new Request;
-        $request1->merge([
-            'client_uuid' => $clientUuid,
+        $payload = [
+            'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => $receiver->uuid,
-        ]);
-        $response1 = $controller->store($request1);
-        $this->assertEquals(201, $response1->getStatusCode());
+        ];
 
-        // Second request - should return 200 (already exists)
-        $request2 = new Request;
-        $request2->merge([
-            'client_uuid' => $clientUuid,
-            'receiver_uuid' => $receiver->uuid,
-        ]);
-        $response2 = $controller->store($request2);
-        $this->assertEquals(200, $response2->getStatusCode());
+        $this->postJson('/api/user/friend-requests', $payload)->assertStatus(201);
 
-        $this->assertEquals(1, Friendship::where('client_uuid', $clientUuid)->count());
+        $this->postJson('/api/user/friend-requests', $payload)->assertStatus(200);
+
+        $this->assertEquals(1, Friendship::where('sender_uuid', $sender->uuid)
+            ->where('receiver_uuid', $receiver->uuid)
+            ->count());
     }
 
     public function test_store_prevents_self_friendship(): void
@@ -183,19 +142,10 @@ class FriendshipControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge([
+        $this->postJson('/api/user/friend-requests', [
             'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => $user->uuid,
-        ]);
-
-        try {
-            $response = $controller->store($request);
-            $this->assertEquals(422, $response->getStatusCode());
-        } catch (ValidationException $e) {
-            $this->assertTrue(true);
-        }
+        ])->assertStatus(422);
     }
 
     public function test_store_requires_valid_receiver(): void
@@ -203,27 +153,18 @@ class FriendshipControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge([
+        $this->postJson('/api/user/friend-requests', [
             'client_uuid' => Str::uuid()->toString(),
             'receiver_uuid' => 'nonexistent-uuid',
-        ]);
-
-        try {
-            $response = $controller->store($request);
-            $this->assertEquals(422, $response->getStatusCode());
-        } catch (ValidationException $e) {
-            $this->assertTrue(true);
-        }
+        ])->assertStatus(422);
     }
 
     public function test_store_requires_authentication(): void
     {
-        $this->expectException(AuthenticationException::class);
-
-        $controller = new FriendshipController;
-        $controller->store(new Request);
+        $this->postJson('/api/user/friend-requests', [
+            'client_uuid' => Str::uuid()->toString(),
+            'receiver_uuid' => 'some-uuid',
+        ])->assertStatus(401);
     }
 
     public function test_respond_accepts_friendship_request(): void
@@ -237,13 +178,9 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($receiver);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge(['action' => 'accept']);
-
-        $response = $controller->respond($request, $friendship->uuid);
-
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
+            'action' => 'accept',
+        ])->assertStatus(200);
 
         $this->assertDatabaseHas('friendships', [
             'uuid' => $friendship->uuid,
@@ -262,13 +199,9 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($receiver);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge(['action' => 'decline']);
-
-        $response = $controller->respond($request, $friendship->uuid);
-
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
+            'action' => 'decline',
+        ])->assertStatus(200);
 
         $this->assertDatabaseHas('friendships', [
             'uuid' => $friendship->uuid,
@@ -287,13 +220,9 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($receiver);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge(['action' => 'reject']); // Legacy action
-
-        $response = $controller->respond($request, $friendship->uuid);
-
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
+            'action' => 'reject',
+        ])->assertStatus(200);
 
         $this->assertDatabaseHas('friendships', [
             'uuid' => $friendship->uuid,
@@ -306,16 +235,9 @@ class FriendshipControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge(['action' => 'accept']);
-
-        try {
-            $controller->respond($request, 'nonexistent-uuid');
-            $this->fail('Expected ModelNotFoundException');
-        } catch (ModelNotFoundException $e) {
-            $this->assertTrue(true);
-        }
+        $this->patchJson('/api/user/friend-requests/nonexistent-uuid', [
+            'action' => 'accept',
+        ])->assertStatus(404);
     }
 
     public function test_respond_forbidden_for_non_receiver(): void
@@ -330,16 +252,9 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user3);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge(['action' => 'accept']);
-
-        try {
-            $controller->respond($request, $friendship->uuid);
-            $this->fail('Expected ModelNotFoundException');
-        } catch (ModelNotFoundException $e) {
-            $this->assertTrue(true);
-        }
+        $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
+            'action' => 'accept',
+        ])->assertStatus(404);
     }
 
     public function test_respond_forbidden_for_sender(): void
@@ -353,23 +268,15 @@ class FriendshipControllerTest extends TestCase
         ]);
         Sanctum::actingAs($sender);
 
-        $controller = new FriendshipController;
-        $request = new Request;
-        $request->merge(['action' => 'accept']);
-
-        try {
-            $controller->respond($request, $friendship->uuid);
-            $this->fail('Expected ModelNotFoundException');
-        } catch (ModelNotFoundException $e) {
-            $this->assertTrue(true);
-        }
+        $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
+            'action' => 'accept',
+        ])->assertStatus(404);
     }
 
     public function test_respond_requires_authentication(): void
     {
-        $this->expectException(AuthenticationException::class);
-
-        $controller = new FriendshipController;
-        $controller->respond(new Request, 'some-uuid');
+        $this->patchJson('/api/user/friend-requests/some-uuid', [
+            'action' => 'accept',
+        ])->assertStatus(401);
     }
 }

@@ -211,11 +211,11 @@ Correspondencia técnica entre servicios del frontend, rutas, validadores (`Form
 | | `ClubService.updateChannel` | `PATCH` | `/api/clubs/{club_uuid}/channels/{channel_uuid}` | `UpdateClubChannelRequest` | `ClubChannelController@update` | `ChannelUpdated` |
 | | `ClubService.createRole` | `POST` | `/api/clubs/{club_uuid}/roles` | `StoreClubRoleRequest` | `ClubRoleController@store` | `RoleCreated` |
 | | `ClubService.updateRole` | `PATCH` | `/api/clubs/{club_uuid}/roles` | `UpdateClubRoleRequest` | `ClubRoleController@update` | `RoleUpdated` |
-| | `ClubService.assignRole` | `POST` | `/api/clubs/{club_uuid}/members/{user_uuid}/roles` | `AssignClubRoleRequest` | `ClubMemberRoleController@store` | `MemberRoleUpdated` |
+| | `ClubService.assignRole` | `POST` | `/api/clubs/{club_uuid}/members/{user_uuid}/roles` | `AssignClubRoleRequest` | `ClubMemberRoleController@store` | `MemberRoleAssigned` |
 
 > **Nota de convención (actualizado 2026-06-04):** Los identificadores de sub-recurso en operaciones PATCH (update de categorías, canales, roles) viajan en el **body** de la petición (`category_uuid`, `channel_uuid`, `uuid` respectivamente), no en la URL. Esto simplifica la firma del endpoint y mantiene el path estable. La convención para operaciones destructivas (DELETE) sí mantiene el identificador en URL.
-| **User** | `UserService.updateUser` | `PATCH` | `/api/user` | `UpdateUserRequest` | `UserController@updateProfile` | `UserProfileUpdated` |
-| | `NotificationService.respondToFriendRequest` | `PATCH` | `/api/user/friend-requests/{request_uuid}` | `RespondFriendshipRequest` | `FriendshipController@respond` | `FriendRequestStatusChanged` |
+| **User** | `UserService.updateUser` | `PATCH` | `/api/user` | `UpdateUserRequest` | `UserController@updateProfile` | — |
+| | `NotificationService.respondToFriendRequest` | `PATCH` | `/api/user/friend-requests/{request_uuid}` | `RespondFriendshipRequest` | `FriendshipController@respond` | `FriendshipStatusChanged` |
 
 ### Mapa de Endpoints por Módulo
 

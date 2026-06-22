@@ -132,7 +132,7 @@ Define **qué verificar antes de escribir código**, organizado por capa y conte
 - Formato checklist ejecutable (no prosa) para que la IA marque mentalmente cada regla
 - Cubre: idempotencia, SRP, N+1, paginación, modelos, migraciones, form requests, policies, resources, Octane, React Query, mutaciones, deduplicación, WebSockets, servicios, componentes, naming
 
-Se carga como instrucción en `opencode.json` para que la IA lo lea al inicio de cada sesión, junto a `AGENTS.md` y `rules.md`.
+Se carga como instrucción en `opencode.json` para que la IA lo lea al inicio de cada sesión, junto a `AGENTS.md`, `rules.md` y `hitl_protocol.md` (en ese orden — el HITL va último para maximizar retención en el contexto).
 
 ***
 
@@ -150,8 +150,9 @@ graph LR
         A3[frontend-check - Kimi K2.6 - edit: deny]
     end
 
-    subgraph "Subagente con Escritura"
+    subgraph "Subagentes con Escritura"
         A4[test - Nemotron 3 Ultra Free - edit: allow]
+        A7[doc - DeepSeek V4 Flash - edit: allow]
     end
 
     subgraph "Agente Principal"
@@ -163,6 +164,7 @@ graph LR
     A2 -->|Resultados| A5
     A3 -->|Discrepancias| A5
     A4 -->|Tests| A5
+    A7 -->|Documentación| A5
     A5 -.->|Fallback| A6
 ```
 
@@ -173,7 +175,8 @@ graph LR
 | `@auditar` | Kimi K2.6 | `edit: deny`, `bash: deny` | Auditoría completa del backend contra `@docs` |
 | `@explorar` | MiMo-V2.5 | `edit: deny`, `bash: allow-list` | Exploración rápida de código (búsquedas, patrones) |
 | `@frontend-check` | Kimi K2.6 | `edit: deny` | Verificación de consistencia frontend-backend |
-| `@test` | **Nemotron 3 Ultra Free** | `edit: allow` | Generación de tests Feature/Unit para Laravel. **Gratis**, antes era MiniMax M2.7 ($0.30/$1.20). |
+| `@test` | **Nemotron 3 Ultra Free** | `edit: allow` | Generación de tests Feature/Unit siguiendo los patrones del proyecto (idempotencia, throttling, resource casting, policies, response envelopes). |
+| `@doc` | **DeepSeek V4 Flash** | `edit: allow` (solo docs/) | Creación de documentación, guías markdown, planificación, prompts. No toca código. |
 | **Agente principal (`build`)** | **Nemotron 3 Ultra Free** | `edit: allow` | **Implementación, debugging, refactor.** Gratis, 550B/55B, 1M ctx, 300+ tok/s. |
 | **Fallback (`build-fallback`)** | MiniMax M3 | `edit: allow` | **Plan B si el periodo gratuito de Ultra termina.** |
 
@@ -183,6 +186,7 @@ graph LR
 |---|---|---|
 | **Nemotron 3 Ultra Free** | **550B/55B MoE, 1M ctx, 300+ tok/s, gratis.** Optimizado para agentic coding multi-paso. | **Agente principal** `build` + **`@test`** (cubre todo el coding). Antes se pagaba M3 y M2.7 por separado. |
 | **Kimi K2.6** | Baja alucinación, retrieval factual | `@auditar`, `@frontend-check` (precisión > velocidad) |
+| **DeepSeek V4 Flash** | Volumen, respuestas rápidas, buena para texto largo. Gratis. | **`@doc`** (documentación y planificación — tareas de texto sin código). |
 | **MiMo-V2.5** | Extremadamente rápido, 150K req/mes | `@explorar` (velocidad > potencia) |
 | ~~MiniMax M2.7~~ | ~~Bueno para tareas repetitivas~~ | **Reemplazado por Ultra** (gratis, sin sobreingeniería) |
 | **MiniMax M3** | 1M contexto, coding SOTA, producer+verifier loop | **Fallback** del agente principal si el periodo gratuito de Ultra termina. |
@@ -244,5 +248,5 @@ Se queria lograr que la IA pudiese tener:
 
 
 
-**Stack de IA implementado en Vyntra**: opencode (Go + Zen), **Nemotron 3 Ultra Free** (agente principal + tests), Kimi K2.6 (auditoría), MiniMax M3 (fallback), MiMo-V2.5 (exploración), Qwen3.7 Max (teoría), GLM-5.1 (documentación), DeepSeek V4 Flash/Pro (volumen).  
+**Stack de IA implementado en Vyntra**: opencode (Go + Zen), **Nemotron 3 Ultra Free** (agente principal + tests), Kimi K2.6 (auditoría), DeepSeek V4 Flash (documentación + volumen), MiniMax M3 (fallback), MiMo-V2.5 (exploración), Qwen3.7 Max (teoría), GLM-5.1 (documentación legacy).  
 *Nota: MiniMax M2.7 removido — reemplazado por Nemotron 3 Ultra Free (más calidad, mismo costo: $0).*
