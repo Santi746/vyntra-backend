@@ -35,100 +35,59 @@
 
 ---
 
-## Subagentes especializados
+## Arquitectura Multi-Oficina
 
-Crear los siguientes archivos en `.opencode/agents/`. Cada subagente corre con su propio contexto aislado, modelo dedicado y permisos restrictivos.
+El sistema se organiza en 3 dominios:
 
-### 1. `@auditar` - Auditor del backend
+| Oficina | Llamas vía | Subagentes |
+|---------|-----------|------------|
+| **Asistente Ejecutor** | Agente principal (TUI) | `@explorar`, `@doc` (huérfanos) |
+| **Supervisión de Proyecto** | `@supervision-de-proyecto` | `@audit`, `@front-back-consistency`, `@bestPracticeSenior` |
+| **Agente de Testeo** | `@agente-de-testeo` | `@testExecutor`, `@CreateTester`, `@TesterRequests`, `@breakerTester` |
 
-Archivo: `.opencode/agents/auditar.md`
+**Regla de oro:** Asistente Ejecutor NUNCA llama a otras oficinas. Tú llamas a `@supervision-de-proyecto` o `@agente-de-testeo` directamente cuando los necesitas.
 
-```yaml
----
-description: Auditoria completa del backend Laravel. Sigue @docs y RULEs para verificar escalabilidad, arquitectura, seguridad y errores. Usa cuando pidas "analiza todo el backend", "revisa este modulo contra las reglas".
-mode: subagent
-model: kimi-k2.6
-temperature: 0.1
-permission:
-  edit: deny
-  bash:
-    "*": deny
-    "git diff*": allow
-    "git log*": allow
----
+### Subagentes de Supervisión de Proyecto
 
-Eres un auditor de backend Laravel. Tu trabajo:
+#### `@audit` - Auditor de código (Kimi K2.6)
 
-1. Lee TODOS los archivos relevantes (controllers, models, routes, policies, form requests, migrations)
-2. Verifica cada uno contra los @docs del proyecto y las reglas de arquitectura
-3. Reporta: violaciones de arquitectura, problemas de escalabilidad, errores de consistencia, codigo muerto, endpoints faltantes
-4. NO edites archivos. Solo reporta hallazgos.
-5. Se preciso. Si algo parece raro pero no tienes certeza, marcalo como "ADVERTENCIA: a verificar"
-```
+Audita controllers, form requests, routes, models, migrations, componentes y hooks. **Requiere instrucción explícita** de qué auditar. Audita en cascada (controller → resources → form requests). Read-only.
 
-### 2. `@explorar` - Explorador rapido de codigo
+#### `@front-back-consistency` - Verificador FE↔BE (Kimi K2.6)
 
-Archivo: `.opencode/agents/explorar.md`
+Verifica consistencia entre frontend y backend: API contract, hooks React Query, controllers, routes. Más autónomo: si no se le especifica qué, audita todo.
 
-```yaml
----
-description: Exploracion rapida de codigo. Encuentra archivos, busca patrones, responde preguntas sobre la estructura del proyecto. Read-only.
-mode: subagent
-model: mimo-v2.5
-permission:
-  edit: deny
-  bash:
-    "*": deny
-    "git status": allow
-    "git diff*": allow
-    "rg *": allow
-    "grep *": allow
----
+#### `@bestPracticeSenior` - Analista senior (DeepSeek V4 Flash)
 
-Explorador de codigo. Read-only. Encuentra archivos, grepea patrones, contesta "donde esta X", "cuantos archivos usan Y". Rapido y sin tocar nada.
-```
+Analiza buenas prácticas vía webfetch. Solo se usa cuando hay dudas arquitectónicas. Requiere auditoría previa como input.
 
-### 3. `@frontend-check` - Verificador de consistencia frontend-backend
+### Subagentes de Agente de Testeo
 
-Archivo: `.opencode/agents/frontend-check.md`
+#### `@testExecutor` - Ejecutor de tests (DeepSeek V4 Flash)
 
-```yaml
----
-description: Verifica que el backend y frontend coincidan. Revisa contratos de API, tipos, campos de recursos y rutas. Tambien conocido como API Contract Verify.
-mode: subagent
-model: kimi-k2.6
-temperature: 0.1
-permission:
-  edit: deny
----
+Ejecuta tests simples o scripts. Requiere instrucción explícita. No para HTTP/WSS complejos.
 
-Verificador de consistencia frontend-backend (API Contract Verify):
+#### `@CreateTester` - Creador de tests (DeepSeek V4 Flash)
 
-1. Lee los API Resources, controllers, y routes del backend
-2. Lee los tipos/interfaces y llamadas API del frontend
-3. Reporta discrepancias: campos faltantes, tipos incorrectos, rutas huerfanas, respuestas que el frontend no espera
-4. NO edites, solo reporta
-```
+Crea tests: scripts Node.js, planes markdown AI-friendly. Requiere explicación explícita. Sinergia con @TesterRequests.
 
-### 4. `@test` - Generador de tests
+#### `@TesterRequests` - Tester HTTP/WSS (DeepSeek V4 Flash)
 
-Archivo: `.opencode/agents/test.md`
+Ejecuta tests de peticiones HTTP/WSS. Requiere script de @CreateTester o del agente. Sabe ejecutar y detectar fallos, NO crear tests.
 
-```yaml
----
-description: Genera tests para controllers, models y features del backend Laravel.
-mode: subagent
-model: opencode/nemotron-3-ultra-free
-permission:
-  edit: allow
----
+#### `@breakerTester` - Tester de ruptura (DeepSeek V4 Flash)
 
-Generador de tests para Laravel:
+Intenta romper el código con estrés, vulnerabilidades, peticiones simultáneas. Usar con precaución.
 
-1. Lee el controller/model a testear
-2. Escribe tests en tests/Feature/ o tests/Unit/ siguiendo el estilo del proyecto
-3. Usa RefreshDatabase, factories, y Sanctum actingAs
-```
+### Subagentes Huérfanos (disponibles para TODOS)
+
+#### `@explorar` - Explorador rápido (MiMo-V2.5)
+
+Exploración read-only. Encuentra archivos, grepea patrones, responde "dónde está X". Rápido, sin tocar nada.
+
+#### `@doc` - Documentación (DeepSeek V4 Flash)
+
+Crea y mantiene documentación markdown en `docs/`. No toca código.
 
 ---
 
@@ -137,61 +96,54 @@ Generador de tests para Laravel:
 ```
 Que vas a hacer?
 |
-+- AUDITAR / ANALIZAR / VERIFICAR REGLAS / VERIFICAR FRONTEND-BACKEND
-|   +- "@auditar analiza todos los controllers"        (Kimi K2.6)  read-only
-|   +- "@frontend-check verifica el API contract"       (Kimi K2.6)  read-only
-|   +- "@auditar analiza todos los models/policies"     (Kimi K2.6)  read-only
++- AUDITAR / SUPERVISAR / VERIFICAR CALIDAD
+|   +- "@supervision-de-proyecto audita controllers"   (DeepSeek V4 Flash)  orquesta
+|   |   +- "@audit" directo si ya sabes qué auditar     (Kimi K2.6)  read-only
+|   |   +- "@front-back-consistency" para FE↔BE         (Kimi K2.6)  read-only
+|   |
+|   +- "@bestPracticeSenior" (solo si hay dudas sr.)    (DeepSeek V4 Flash)  webfetch
+|
++- TESTEAR / VERIFICAR FUNCIONALIDAD
+|   +- "@agente-de-testeo gestiona el testing"             (DeepSeek V4 Flash)  orquesta
+|   |   +- "@CreateTester" para crear planes de test    (DeepSeek V4 Flash)  solo crea
+|   |   +- "@TesterRequests" para ejecutar HTTP/WSS     (DeepSeek V4 Flash)  ejecuta
+|   |   +- "@testExecutor" para tests simples           (DeepSeek V4 Flash)  ejecuta
+|   |   +- "@breakerTester" para romper código          (DeepSeek V4 Flash)  ejecuta
 |
 +- EXPLORAR / BUSCAR / ENCONTRAR
 |   +- Rapido y simple -> "@explorar"                   (MiMo-V2.5)  read-only
-|   +- Documentacion externa -> "@scout"                (ya viene con opencode)
 |
 +- CODIFICAR / IMPLEMENTAR / DEBUGGEAR
-|   +- Tarea compleja multi-archivo -> agente principal  (Nemotron 3 Ultra Free)  full tools
-|   +- Tarea simple (1 archivo) -> agente principal      (Nemotron 3 Ultra Free)  full tools
-|   +- Masivo / bajo riesgo -> agente principal          (DeepSeek V4 Flash)  full tools
-|   +- Fallback (si Ultra termina) -> agente principal   (MiniMax M3)  full tools
+|   +- Tarea -> @asistente-ejecutor + @explorar/@doc    (modelo a elección)
 |
-+- ESCRIBIR TESTS
-|   +- "@test genera tests para ClubMemberController"  (Nemotron 3 Ultra Free)  en paralelo mientras implementas
-|
-+- APRENDER / ENTENDER CONCEPTOS
-|   +- Agente principal con Qwen3.7 Max como modelo     (conservador, preciso)
-|
-+- REFACTORIZAR
-|   +- Agente principal con Nemotron 3 Ultra Free        (1M contexto, multi-step planning, gratis)
-|
-+- DOCUMENTAR
-|   +- Agente principal con GLM-5.1                     (estructurado, salidas largas)
-|
-+- REFACTOR / PARCHEOS MASIVOS BARATOS
-|   +- Agente principal con DeepSeek V4 Flash           ($0.14/M input)
++- DOCUMENTAR / PLANIFICAR
+|   +- "@doc" para docs, planes, prompts                (DeepSeek V4 Flash)
 ```
 
 ---
 
-## Flujo combinado: como encadenar modelos
+## Flujo combinado: como encadenar las oficinas
 
-El verdadero poder esta en combinar modelos en flujo:
+El verdadero poder esta en combinar las oficinas en flujo:
 
 1. **Auditar primero**
-   - "`@auditar` analiza todos los controllers"
-   - Kimi K2.6 lee todo, devuelve informe de violaciones
+   - "`@supervision-de-proyecto` audita los nuevos controllers"
+   - Supervisión de Proyecto orquesta: `@audit` revisa código, devuelve informe
 
 2. **Implementar los fixes**
-   - "Ok, arregla los problemas 1 y 3 del informe"
-   - Vuelves al agente principal (yo) con Nemotron 3 Ultra Free para implementar
+   - "Arregla los problemas 1 y 3 del informe"
+   - Vuelves al Asistente Ejecutor para implementar con `@explorar` y `@doc`
 
-3. **Verificar de nuevo**
-   - "`@frontend-check` verifica que los cambios coincidan con el frontend"
-   - Kimi K2.6 contrasta de nuevo
+3. **Verificar consistencia FE↔BE**
+   - "`@supervision-de-proyecto` verifica que los cambios coincidan con el frontend"
+   - `@front-back-consistency` contrasta API contract + código
 
-4. **Generar tests en paralelo**
-   - "`@test` genera tests para ClubMemberController"
-   - Nemotron 3 Ultra Free escribe tests mientras tu sigues con otra cosa
+4. **Testear**
+   - "`@agente-de-testeo` genera y ejecuta tests para estos cambios"
+   - Agente de Testeo orquesta: `@CreateTester` diseña, `@TesterRequests` ejecuta
 
 5. **Documentar el cambio**
-   - Agente principal con GLM-5.1 para redactar la retrospectiva o el nuevo doc
+   - "`@doc` documenta los cambios y decisiones"
 
 ---
 
@@ -239,15 +191,17 @@ Nemotron 3 Ultra Free es "available for a limited time" segun Zen. Si NVIDIA/NVI
 
 ---
 
-## Cuando NO usar subagentes
+## Cuando NO usar oficinas/subagentes
 
 - Tareas simples (1-2 archivos, un solo cambio) -> mas overhead que beneficio
 - Tareas que necesitan tu contexto completo -> el subagente parte de cero
 - Debugging activo -> necesitas iteracion rapida en el mismo contexto
 
-## Cuando SI usar subagentes
+## Cuando SI usar oficinas/subagentes
 
-- **Auditoria** -> subagente con Kimi K2.6, contexto aislado, no contamina tu sesion
-- **Exploracion grande** -> subagente con MiMo-V2.5, devuelve respuestas rapidas sin inflar tu chat
-- **Cambio de modelo especializado** -> Kimi K2.6 audita, Nemotron 3 Ultra codifica, cada uno con su mejor modelo
-- **Tareas paralelas** -> `@test` mientras tu implementas, ambos con contextos independientes
+- **Auditoria de calidad** -> `@supervision-de-proyecto`, contexto aislado, subagentes especializados
+- **Testing completo** -> `@agente-de-testeo`, orquesta create + execute + break
+- **Exploracion grande** -> `@explorar`, rapido sin inflar tu chat
+- **Documentacion/planes** -> `@doc`, especializado en markdown
+- **Dudas de arquitectura** -> `@bestPracticeSenior` via webfetch
+- **Tareas paralelas** -> `@agente-de-testeo` mientras implementas con Asistente Ejecutor

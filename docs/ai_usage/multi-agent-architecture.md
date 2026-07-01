@@ -1,33 +1,68 @@
-# Multi-Agent Architecture with HITL Policy Enforcement
+# Multi-Agent Architecture with HITL Policy Enforcement — v2 (Oficinas)
 
-> Sistema de gobernanza de IA implementado en el backend de Vyntra.
-> Diseñado para eliminar alucinaciones, forzar verificación humana y escalar el desarrollo con agentes especializados.
+> Sistema de gobernanza de IA para Vyntra, organizado en oficinas especializadas con agentes orquestadores y subagentes.
+> Cada oficina gestiona un dominio específico: supervisión de calidad o testing.
 
-***
+---
 
 ## 1. VISIÓN GENERAL
 
-En lugar de usar un modelo de IA genérico con acceso libre al código, este proyecto implementa una **capa de gobernanza** que controla **qué puede hacer la IA**, **cómo debe hacerlo** y **cuándo necesita permiso humano**.
+El sistema se organiza en 3 oficinas + 1 agente principal, cada una con un agente orquestador que gestiona subagentes especializados. El humano (tú) llama a la oficina que necesita según la tarea.
 
-El sistema se compone de cuatro pilares:
+| Oficina | Agente Orquestador | Subagentes |
+|---------|-------------------|------------|
+| **Asistente Ejecutor** (agente principal) | `@asistente-ejecutor` | `@explorar`, `@doc` (solo huérfanos) |
+| **Supervisión de Proyecto** | `@supervision-de-proyecto` | `@audit`, `@front-back-consistency`, `@bestPracticeSenior` |
+| **Agente de Testeo** | `@agente-de-testeo` | `@testExecutor`, `@CreateTester`, `@TesterRequests`, `@breakerTester` |
 
-| Pilar | Función | Archivo(s) |
-|---|---|---|
-| **Constitución** | Reglas cognitivas obligatorias (verificar antes de asumir, preguntar si hay dudas) + HITL Continuo | `AGENTS.md` |
-| **Convenciones del proyecto** | Reglas específicas del stack y estilo de código | `rules.md` |
-| **Patrones Obligatorios** | Checklist ejecutable de patrones arquitectónicos por capa (idempotencia, SRP, N+1, paginación, etc.) | `docs/architecture/mandatory_patterns.md` |
-| **Policy Enforcement** | Permisos técnicos a nivel de herramienta (edit, bash, webfetch) | `opencode.json` |
-| **Multi-Agent System** | Subagentes especializados con modelos dedicados y permisos restrictivos | `.opencode/agents/*.md` |
+### Regla fundamental
+- **Asistente Ejecutor** solo usa huérfanos (`@explorar`, `@doc`). **NUNCA llama a otras oficinas.**
+- **Tú llamas directamente** a `@supervision-de-proyecto` o `@agente-de-testeo` cuando necesitas auditoría o testing.
 
-***
+---
 
 ## 2. DIAGRAMA DE ARQUITECTURA
 
-![Arquitectura Multi-Agente con HITL](assets/architecture-diagram.png)
+```mermaid
+graph TB
+    subgraph HUMANO["👤 Tú (Desarrollador)"]
+        H1[Interactúas según la tarea]
+    end
 
-*Diagrama de la arquitectura completa: Capa Humana → Capa de Gobernanza → Subagentes Especializados.*
+    subgraph PRINCIPAL["🏢 Agente Principal"]
+        EX["Asistente Ejecutor (@asistente-ejecutor)<br/>Codificación, implementación,<br/>debugging, refactor, teoría"]
+        EX -->|Solo usa| ORF1["@explorar"]
+        EX -->|Solo usa| ORF2["@doc"]
+    end
 
-***
+    subgraph AUDIT["🏛️ Supervisión de Proyecto"]
+        AS["@supervision-de-proyecto<br/>DeepSeek V4 Flash"]
+        AS -->|Delega| A1["@audit<br/>Kimi K2.6"]
+        AS -->|Delega| A2["@front-back-consistency<br/>Kimi K2.6"]
+        AS -->|Solo si necesario| A3["@bestPracticeSenior<br/>DeepSeek V4 Flash"]
+    end
+
+    subgraph TEST["🧪 Probador Beta"]
+        BT["@probador-beta<br/>DeepSeek V4 Flash"]
+        BT -->|Delega| T1["@testExecutor<br/>DeepSeek V4 Flash"]
+        BT -->|Delega| T2["@CreateTester<br/>DeepSeek V4 Flash"]
+        BT -->|Sinergia| T3["@TesterRequests<br/>DeepSeek V4 Flash"]
+        BT -->|Solo si necesario| T4["@breakerTester<br/>DeepSeek V4 Flash"]
+    end
+
+    HUMANO -->|"Codificar/preguntar"| PRINCIPAL
+    HUMANO -->|"Auditar/supervisar"| AUDIT
+    HUMANO -->|"Testear/verificar"| TEST
+
+    T2 -.->|Crea scripts| T3
+
+    style HUMANO fill:#1e3a5f,stroke:#4da6ff,color:#fff
+    style PRINCIPAL fill:#1a4731,stroke:#22c55e,color:#fff
+    style AUDIT fill:#3d1f56,stroke:#a855f7,color:#fff
+    style TEST fill:#5c1a1a,stroke:#ef4444,color:#fff
+```
+
+---
 
 ## 3. HITL POLICY ENFORCEMENT
 
@@ -35,214 +70,165 @@ El sistema se compone de cuatro pilares:
 
 **Human-in-the-Loop (HITL)** significa que el humano mantiene el control sobre decisiones críticas. La IA **no ejecuta acciones de riesgo sin aprobación explícita**.
 
-### 3.2 Cómo funciona en este proyecto
+### 3.2 Permisos por agente
 
-El archivo `opencode.json` define los permisos a nivel de herramienta:
+| Agente | edit | bash | webfetch |
+|--------|------|------|----------|
+| AgentExecutor | allow (vía HITL proxy) | ask (allow-list para read) | ask |
+| Supervisión de Proyecto | deny | deny | ask |
+| @audit | deny | deny (solo git) | deny |
+| @front-back-consistency | deny | deny | deny |
+| @bestPracticeSenior | deny | deny | **allow** |
+| Agente de Testeo | deny | ask | deny |
+| @testExecutor | deny | ask | deny |
+| @CreateTester | deny | deny | deny |
+| @TesterRequests | deny | ask | deny |
+| @breakerTester | deny | ask | deny |
 
-```json
-{
-  "permission": {
-    "edit": "allow",
-    "webfetch": "ask",
-    "bash": {
-      "*": "ask",
-      "git status": "allow",
-      "php artisan route:list*": "allow",
-      "rg *": "allow"
-    }
-  }
-}
-```
-
-| Herramienta | Política | Racional |
-|---|---|---|
-| `edit` | `allow` | Tras aprobación del plan, la IA ejecuta sin fricción |
-| `bash` | `ask` por defecto | Todo comando nuevo requiere confirmación |
-| `bash` (allow-list) | `allow` | Comandos de inspección seguros se ejecutan libremente |
-| `webfetch` | `ask` | No se hacen peticiones externas sin permiso |
-
-### 3.3 Mejora continua: Protocolo de Clarificación Continua
-
-La sección 3 de `AGENTS.md` fue reforzada con un **Protocolo de Clarificación Continua** que obliga a la IA a preguntar **durante** la ejecución, no solo al planificar:
-
-- **Mientras investiga**: si algo no se entiende al 100% → STOP y pregunta
-- **Mientras debuggea**: si no está 100% segura de la causa raíz → presenta hallazgos y pide dirección
-- **Mientras refactoriza**: antes de cambiar lógica que no entiende → pregunta si el comportamiento colateral debe mantenerse
-- **Regla de la duda inmediata**: si en CUALQUIER momento siente que está adivinando → DETENERSE y usar `question`
-
-Esto es un refuerzo **constitucional** (no mecánico). opencode no tiene un sensor de incertidumbre, pero las instrucciones son explícitas y de cumplimiento obligatorio.
-
-### 3.4 Flujo de aprobacion
+### 3.3 Flujo de aprobación
 
 ```mermaid
 sequenceDiagram
     participant U as Desarrollador
-    participant A as Agente Principal
-    participant C as Constitucion
-    participant P as Policy Engine
+    participant A as Agente
+    participant P as HITL Proxy
 
-    U->>A: Implementa feature X
-    A->>C: Consulta reglas cognitivas
-    C-->>A: Verifica docs, pregunta si hay dudas
-    A->>U: Presenta plan detallado
+    U->>A: Ejecuta tarea
+    A->>U: Presenta plan (si aplica)
     U->>A: Aprueba plan
-    A->>P: Ejecuta edicion de archivos
-    P-->>A: edit: allow - continua
-    A->>P: Ejecuta php artisan migrate
-    P-->>A: bash: ask - pide confirmacion
-    A->>U: Ejecutar migracion?
-    U->>A: Si
-    A->>P: Ejecuta migracion
-    P-->>A: bash: allow - continua
+    A->>P: hitl-proxy_edit_hitl(approved: true)
+    P-->>A: ✅ Ejecutado
+    A->>P: hitl-proxy_bash_hitl(comando)
+    P-->>A: ❌ No aprobado - usa question()
+    A->>U: ¿Ejecutar comando?
+    U->>A: Sí
+    A->>P: hitl-proxy_bash_hitl(comando, approved: true)
+    P-->>A: ✅ Ejecutado
 ```
 
-***
+---
 
-## 4. CONSTITUCIÓN DEL AGENTE
+## 4. OFICINAS EN DETALLE
 
-### 4.1 `AGENTS.md` — Protocolo Cognitivo
+### 4.1 Asistente Ejecutor (`@asistente-ejecutor`)
 
-Define **cómo debe pensar** la IA antes de actuar:
+**Rol:** Asistente, planificador y ejecutor principal de tareas de codificación.
 
-| Regla | Descripción |
-|---|---|
-| **Cero Suposiciones** | Prohibido inventar rutas, nombres, firmas o lógica |
-| **Clarificación Obligatoria (HITL Continuo)** | Si hay ≥1% de ambigüedad → usar `question` y detenerse. INCLUSO durante debugging/refactor/implementación. Protocolo de duda inmediata: si sientes que estás adivinando → STOP → pregunta. |
-| **Checklist Pre-Edición** | Leer archivo completo, imports, vecinos y docs antes de editar |
-| **Manejo de Ignorancia** | Declarar "no lo sé" y preguntar; jamás inferir |
-| **Aprobación de Planes** | Para tareas ≥3 archivos: plan → aprobación → ejecución |
-| **Verificación Post-Cambio** | Tests + Pint + route:list obligatorios tras cada edición |
+- Es el agente por defecto al iniciar sesión
+- Asiste con preguntas, teoría, conceptos y explicaciones de código
+- **Debe planificar** antes de tocar código si la tarea es ≥ moderada
+- **No ejecuta código sin permiso del usuario**
+- Usa exclusivamente `@explorar` (explorar código) y `@doc` (documentación)
+- **Prohibido llamar a Supervisión de Proyecto o Agente de Testeo**
 
-### 4.2 `rules.md` — Convenciones del Proyecto
+### 4.2 Supervisión de Proyecto (`@supervision-de-proyecto`)
 
-Define **qué patrones debe seguir** el código:
+**Rol:** Supervisar calidad del proyecto contra reglas establecidas.
 
-- Controllers: validación vía FormRequest, respuesta vía API Resource
-- Models: `$fillable` declarado, relaciones tipadas, scopes con prefijo `scope`
-- Resources: solo campos definidos en `docs/api_contract.md`
-- Tests: `RefreshDatabase`, `actingAs($user, 'sanctum')`, factories
-- Migrations: una por cambio atómico, foreign keys con `constrained()`
+**Modelo:** DeepSeek V4 Flash
 
-### 4.3 `mandatory_patterns.md` — Checklist de Patrones Obligatorios
+**Subagentes:**
 
-Define **qué verificar antes de escribir código**, organizado por capa y contexto:
+| Subagente | Modelo | Función |
+|-----------|--------|---------|
+| `@audit` | Kimi K2.6 | Auditoría de código puro. Requiere instrucción explícita. Audita en cascada. |
+| `@front-back-consistency` | Kimi K2.6 | Verifica consistencia FE↔BE. Más autónomo. |
+| `@bestPracticeSenior` | DeepSeek V4 Flash | Analiza buenas prácticas vía webfetch. Solo cuando hay dudas. |
 
-- 17 secciones modulares con etiquetas `[BACKEND]` / `[FRONTEND]` / `[BOTH]`
-- Mapa rápido de contexto para que la IA sepa qué secciones aplicar según lo que está haciendo
-- Formato checklist ejecutable (no prosa) para que la IA marque mentalmente cada regla
-- Cubre: idempotencia, SRP, N+1, paginación, modelos, migraciones, form requests, policies, resources, Octane, React Query, mutaciones, deduplicación, WebSockets, servicios, componentes, naming
+**Flujo de trabajo:**
+1. Recibe solicitud de supervisión
+2. Decide qué subagente(s) usar
+3. Delega con instrucciones claras
+4. Si @audit encuentra issues → puede llamar a @bestPracticeSenior para validar
+5. Compila reporte y lo devuelve al usuario
 
-Se carga como instrucción en `opencode.json` para que la IA lo lea al inicio de cada sesión, junto a `AGENTS.md` y `rules.md`.
+### 4.3 Agente de Testeo (`@agente-de-testeo`)
 
-***
+**Rol:** Gestionar todo el testing del proyecto.
 
-## 5. SISTEMA MULTI-AGENTE
+**Modelo:** DeepSeek V4 Flash
 
-### 5.1 Arquitectura de Subagentes
+**Subagentes:**
 
-Cada subagente opera con **contexto aislado**, **modelo dedicado** y **permisos restrictivos**:
+| Subagente | Modelo | Función |
+|-----------|--------|---------|
+| `@testExecutor` | DeepSeek V4 Flash | Ejecuta tests simples/scripts. |
+| `@CreateTester` | DeepSeek V4 Flash | Crea tests y planes de testeo. Sinergia con @TesterRequests. |
+| `@TesterRequests` | DeepSeek V4 Flash | Ejecuta tests HTTP/WSS. Requiere script de @CreateTester. |
+| `@breakerTester` | DeepSeek V4 Flash | Intenta romper el código. Usar con precaución. |
+
+**Sinergia clave:** @CreateTester + @TesterRequests son un equipo. @CreateTester diseña el test, @TesterRequests lo ejecuta. Sin @CreateTester, @TesterRequests no puede crear tests complejos.
+
+**Flujo de trabajo:**
+1. Recibe solicitud de testing
+2. Analiza qué tipo de testeo necesita
+3. Delegar al subagente(s) adecuado(s)
+4. Si hay fallo: analiza causa raíz y propone solución
+5. Reporta al usuario: qué se testéo, resultado, por qué falló, solución
+
+---
+
+## 5. MODELOS ASIGNADOS
+
+| Agente | Modelo | Costo | Razón |
+|--------|--------|-------|-------|
+| Asistente Ejecutor | El que elijas vía TUI | Variable | El usuario decide |
+| Supervisión de Proyecto | DeepSeek V4 Flash | $0.14/$0.28 | Volumen, respuestas rápidas |
+| @audit | Kimi K2.6 | $0.95/$4.00 | Baja alucinación, precisión factual |
+| @front-back-consistency | Kimi K2.6 | $0.95/$4.00 | Baja alucinación, retrieval |
+| @bestPracticeSenior | DeepSeek V4 Flash | $0.14/$0.28 | Volumen para webfetch |
+| Agente de Testeo | DeepSeek V4 Flash | $0.14/$0.28 | Volumen para testing |
+| @testExecutor | DeepSeek V4 Flash | $0.14/$0.28 | Volumen |
+| @CreateTester | DeepSeek V4 Flash | $0.14/$0.28 | Volumen |
+| @TesterRequests | DeepSeek V4 Flash | $0.14/$0.28 | Volumen |
+| @breakerTester | DeepSeek V4 Flash | $0.14/$0.28 | Volumen |
+| @explorar | MiMo-V2.5 | Gratis | Velocidad > potencia |
+| @doc | DeepSeek V4 Flash | $0.14/$0.28 | Texto largo |
+
+---
+
+## 6. FLUJO DE TRABAJO TÍPICO
 
 ```mermaid
 graph LR
-    subgraph "Subagentes Read-Only"
-        A1[auditar - Kimi K2.6 - edit: deny]
-        A2[explorar - MiMo-V2.5 - edit: deny]
-        A3[frontend-check - Kimi K2.6 - edit: deny]
-    end
-
-    subgraph "Subagente con Escritura"
-        A4[test - Nemotron 3 Ultra Free - edit: allow]
-    end
-
-    subgraph "Agente Principal"
-        A5[build - Nemotron 3 Ultra Free - edit: allow]
-        A6[build-fallback - MiniMax M3 - edit: allow]
-    end
-
-    A1 -->|Reporte| A5
-    A2 -->|Resultados| A5
-    A3 -->|Discrepancias| A5
-    A4 -->|Tests| A5
-    A5 -.->|Fallback| A6
-```
-
-### 5.2 Tabla de Subagentes
-
-| Subagente | Modelo | Permisos | Función |
-|---|---|---|---|
-| `@auditar` | Kimi K2.6 | `edit: deny`, `bash: deny` | Auditoría completa del backend contra `@docs` |
-| `@explorar` | MiMo-V2.5 | `edit: deny`, `bash: allow-list` | Exploración rápida de código (búsquedas, patrones) |
-| `@frontend-check` | Kimi K2.6 | `edit: deny` | Verificación de consistencia frontend-backend |
-| `@test` | **Nemotron 3 Ultra Free** | `edit: allow` | Generación de tests Feature/Unit para Laravel. **Gratis**, antes era MiniMax M2.7 ($0.30/$1.20). |
-| **Agente principal (`build`)** | **Nemotron 3 Ultra Free** | `edit: allow` | **Implementación, debugging, refactor.** Gratis, 550B/55B, 1M ctx, 300+ tok/s. |
-| **Fallback (`build-fallback`)** | MiniMax M3 | `edit: allow` | **Plan B si el periodo gratuito de Ultra termina.** |
-
-### 5.3 Por qué modelos diferentes
-
-| Modelo | Fortaleza | Uso en este sistema |
-|---|---|---|
-| **Nemotron 3 Ultra Free** | **550B/55B MoE, 1M ctx, 300+ tok/s, gratis.** Optimizado para agentic coding multi-paso. | **Agente principal** `build` + **`@test`** (cubre todo el coding). Antes se pagaba M3 y M2.7 por separado. |
-| **Kimi K2.6** | Baja alucinación, retrieval factual | `@auditar`, `@frontend-check` (precisión > velocidad) |
-| **MiMo-V2.5** | Extremadamente rápido, 150K req/mes | `@explorar` (velocidad > potencia) |
-| ~~MiniMax M2.7~~ | ~~Bueno para tareas repetitivas~~ | **Reemplazado por Ultra** (gratis, sin sobreingeniería) |
-| **MiniMax M3** | 1M contexto, coding SOTA, producer+verifier loop | **Fallback** del agente principal si el periodo gratuito de Ultra termina. |
-
-***
-
-## 6. FLUJO DE TRABAJO TIPICO
-
-```mermaid
-graph LR
-    Start([Inicio]) --> Investigate[Explorar]
-    Investigate --> Audit[Auditar]
-    Audit --> Plan[Planificar]
-    Plan --> Decision{Aprobado?}
+    Start([Tarea]) --> Decide{¿Qué nesesitas?}
     
-    Decision -->|No| Revise[Revisar]
+    Decide -->|"Codificar/Implementar"| EX["Asistente Ejecutor<br/>+ @explorar / @doc"]
+    Decide -->|"Auditar calidad"| AS["@supervision-de-proyecto<br/>→ @audit / @front-back-consistency"]
+    Decide -->|"Testear"| BT["@agente-de-testeo<br/>→ @CreateTester + @TesterRequests"]
+    
+    EX --> Plan[Planificar]
+    Plan --> Approve{Aprobado?}
+    Approve -->|Sí| Code[Codificar]
+    Approve -->|No| Revise[Revisar]
     Revise --> Plan
     
-    Decision -->|Si| Execute[Ejecutar]
-    Execute --> Verify[Verificar]
-    Verify --> TestGen[Tests]
-    TestGen --> Quality[Quality Check]
-    Quality --> End([Fin])
+    AS --> Report[Reporte de auditoría]
+    BT --> Results[Resultados de testing]
     
-    style Start fill:#27ae60,color:#fff,stroke:#fff,stroke-width:3px
-    style End fill:#27ae60,color:#fff,stroke:#fff,stroke-width:3px
-    style Decision fill:#f39c12,color:#fff,stroke:#fff,stroke-width:3px
-    style Execute fill:#3498db,color:#fff,stroke:#fff,stroke-width:2px
-    style Quality fill:#9b59b6,color:#fff,stroke:#fff,stroke-width:2px
+    Code --> Verify[Verificar post-cambio]
+    Verify --> Test[Tests]
+    Test --> End([Fin])
 ```
 
-***
+---
 
-## 7. DIFERENCIAS VS USO TRADICIONAL DE IA
+## 7. REGLAS DE ORO
 
-| Aspecto | Uso tradicional | Esta arquitectura |
-|---|---|---|
-| **Control** | La IA hace lo que quiere | HITL: humano aprueba planes y comandos |
-| **Seguridad** | Confianza ciega en la IA | Constitución + Policy Enforcement |
-| **Modelos** | Uno genérico para todo | Especializados por tarea |
-| **Contexto** | Todo en un chat | Subagentes con contexto aislado |
-| **Verificación** | Manual, post-facto | Automática: tests + lint + contract check + **mandatory patterns checklist** |
-| **Patrones** | Confiar en que la IA recuerde | Checklist obligatorio por capa: 17 secciones, leído al inicio de cada sesión |
-| **Escalabilidad** | Degrada con proyectos grandes | Mejora: cada subagente escala independientemente |
+1. **Asistente Ejecutor** no llama a otras oficinas — solo usa `@explorar` y `@doc`
+2. Cada oficina sabe gestionar sus subagentes: qué pedir, cómo, cuándo
+3. Si un subagente no entrega lo esperado → el orquestador lo hace o reporta
+4. `@bestPracticeSenior` y `@breakerTester` se usan con precaución y solo cuando es necesario
+5. HITL proxy siempre activo: toda edición/escritura/bash pasa por `question()`
+6. `@browser` está deshabilitado
 
-***
+---
 
-## 8. ¿POR QUÉ IMPORTÓ ESTA ARQUITECTURA?
+## 8. ¿POR QUÉ ESTA ARQUITECTURA?
 
-Se queria lograr que la IA pudiese tener:
-
-1. **Pensamiento sistémico**: No solo se "Uso IA y ya", sino que diseñé un sistema controlado, verificable y escalable.
-2. **Seguridad proactiva**: La IA no puede ejecutar comandos destructivos ni editar archivos sin supervisión.
-3. **Optimización de costos**: Modelos baratos para tareas simples, potentes para complejas.
-4. **Calidad garantizada**: Verificación automática post-cambio (tests + lint + contract check).
-5. **Escalabilidad**: Nuevos subagentes se añaden sin modificar el sistema central.
-6. **Verificación de patrones**: Checklist obligatorio por capa (17 secciones) leído al inicio de cada sesión, con el fin de que nunca olvide los patrones de arquitectura/diseño/codigo obligatorios.
-7. **Control Total Como Arquitecto De Software**: el HITL fue clave para no tener que lidiar con los problemas de alucinaciónes Fallos de escalabilidad o Arquitectura. Ademas de poder tener el control total de las decisiones y Saber exactamente lo que esta haciendo bajo mi supervicion siendo este el punto mas importante, ya que una IA plana no se puede tener un tal control asi como asi sin tener graves consecuencias. 
-
-
-
-**Stack de IA implementado en Vyntra**: opencode (Go + Zen), **Nemotron 3 Ultra Free** (agente principal + tests), Kimi K2.6 (auditoría), MiniMax M3 (fallback), MiMo-V2.5 (exploración), Qwen3.7 Max (teoría), GLM-5.1 (documentación), DeepSeek V4 Flash/Pro (volumen).  
-*Nota: MiniMax M2.7 removido — reemplazado por Nemotron 3 Ultra Free (más calidad, mismo costo: $0).*
+1. **Separación de dominios**: Cada oficina se especializa en un área (codificación, auditoría, testing)
+2. **Control humano**: Tú decides qué oficina llamar según la tarea
+3. **Modelos optimizados**: Kimi K2.6 para precisión, DeepSeek V4 Flash para volumen, MiMo-V2.5 para velocidad
+4. **Jerarquía clara**: Agente orquestador → subagentes, cada uno con contexto aislado y permisos restrictivos
+5. **Sin acoplamiento**: AgentExecutor nunca depende de las oficinas; son llamadas independientes del usuario
+6. **Sinergia controlada**: @CreateTester + @TesterRequests funcionan en equipo, pero solo cuando los necesitas
