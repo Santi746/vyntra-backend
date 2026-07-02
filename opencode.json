@@ -1,13 +1,24 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "instructions": ["AGENTS.md", "rules.md", "docs/architecture/mandatory_patterns.md"],
+  "instructions": ["rules.md", "docs/architecture/mandatory_patterns.md", "AGENTS.md", "docs/architecture/hitl_protocol.md", "PIN.md"],
   "agent": {
-    "build": {
-      "model": "opencode/nemotron-3-ultra-free"
+    "asistente-ejecutor": {
+      "description": "Asistente Ejecutor: Planifica, implementa y depura código con el usuario. Siempre crea un plan.md antes de ejecutar.",
+      "permission": {
+        "edit": "allow"
+      }
+    }
+  },
+   "mcp": {
+    "hitl-proxy": {
+      "type": "local",
+      "command": ["node", "./hitl-proxy/src/index.js"],
+      "enabled": true
     }
   },
   "permission": {
-    "edit": "allow",
+    "edit": "deny",
+    "write": "deny",
     "webfetch": "ask",
     "skill": {
       "laravel-scalability": "allow",

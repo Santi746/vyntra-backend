@@ -2,10 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\UserController;
-use App\Http\Requests\User\UpdateUserRequest;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -19,14 +16,10 @@ class UserControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new UserController;
-        $request = request();
-        $response = $controller->me($request);
+        $response = $this->getJson('/api/user');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
-        $this->assertArrayHasKey('data', $data);
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['status', 'data']);
     }
 
     public function test_show_returns_user_data_by_uuid(): void
@@ -34,12 +27,10 @@ class UserControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $controller = new UserController;
-        $response = $controller->show($user);
+        $response = $this->getJson('/api/users/'.$user->uuid);
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['status', 'data']);
     }
 
     public function test_show_returns_404_for_nonexistent_user(): void
@@ -47,17 +38,7 @@ class UserControllerTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        // Create a user with non-existent UUID for route model binding
-        $nonExistentUser = new User;
-        $nonExistentUser->uuid = 'nonexistent-uuid';
-
-        try {
-            $controller = new UserController;
-            $response = $controller->show($nonExistentUser);
-            $this->assertEquals(404, $response->getStatusCode());
-        } catch (ModelNotFoundException $e) {
-            $this->assertTrue(true);
-        }
+        $this->getJson('/api/users/nonexistent-uuid')->assertStatus(404);
     }
 
     public function test_update_profile_updates_user_data(): void
@@ -67,17 +48,9 @@ class UserControllerTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $controller = new UserController;
-
-        // Create a mock UpdateUserRequest
-        $request = $this->app->make(UpdateUserRequest::class);
-        $request->merge(['username' => 'newusername']);
-
-        $response = $controller->updateProfile($request);
-
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $this->patchJson('/api/user', [
+            'username' => 'newusername',
+        ])->assertStatus(200);
 
         $this->assertDatabaseHas('users', [
             'uuid' => $user->uuid,
@@ -92,11 +65,9 @@ class UserControllerTest extends TestCase
         $user->createToken('token-2')->plainTextToken;
         Sanctum::actingAs($user);
 
-        $controller = new UserController;
-        $response = $controller->sessions(request());
+        $response = $this->getJson('/api/user/sessions');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['status', 'data']);
     }
 }

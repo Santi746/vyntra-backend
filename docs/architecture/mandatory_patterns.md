@@ -22,7 +22,8 @@
 ├── Policy                    → 8
 ├── API Resource              → 9
 ├── Ruta / middleware         → 2
-└── Infraestructura (Octane)  → 10
+├── Infraestructura (Octane)  → 10
+└── Output decision (eventos, API, logs)  → 18
 
 [FRONTEND]
 ├── useQuery / hook lectura   → 11
@@ -31,9 +32,10 @@
 ├── Componente UI             → 16
 ├── WebSocket / Echo          → 14
 ├── Store Zustand             → 16
-└── Feature completo          → 11, 12, 13, 14, 15, 16
+├── Feature completo          → 11, 12, 13, 14, 15, 16
+└── Output decision (eventos, API, logs)  → 18
 
-[BOTH] → 17 (siempre aplica)
+[BOTH] → 17, 18 (siempre aplica)
 ```
 
 ---
@@ -283,11 +285,97 @@
 
 ---
 
+## [BOTH] 18. YAGNI — Principio de Mínimo Output
+
+> Aplica a: TODO momento donde un sistema expone/envía datos (API, eventos WebSocket, logs, permisos, columnas de DB)
+
+**Definición:** "Solo enviar/exponer lo que el consumidor va a usar HOY. Si en duda, enviar menos — siempre podés agregar más después. Sacar campos públicos de una API es breaking change."
+
+**Contexto histórico del proyecto:** Este principio se formalizó durante la feature de Eventos Broadcast (ver `docs/architecture/realtime_architecture/`) cuando decidimos usar `Resource::resolve()` para eventos de chat/DM/notificación (Patrón A/B) y array manual `{uuid, action}` para eventos de delete/update parcial (Patrón C/D). Discord aplica el mismo principio en su Gateway.
+
+### Backend (Laravel)
+
+- [ ] **Eventos WebSocket — Patrón A (chat/DM/notif):** `Resource::resolve()` en `'d'` → el cliente necesita el objeto completo para renderizar sin fetch
+- [ ] **Eventos WebSocket — Patrón B (CRUD estructural):** `Resource::resolve()` en `'d'` → el cliente actualiza cache local
+- [ ] **Eventos WebSocket — Patrón C (Delete):** array manual `{uuid, action: 'delete'}` → el cliente solo necesita QUÉ borrar
+- [ ] **Eventos WebSocket — Patrón D (Update parcial):** array manual `{uuid, campo_modificado}` → el cliente solo necesita QUÉ CAMBIÓ
+- [ ] **Eventos WebSocket — Patrón E (Social):** array manual con UUIDs sueltos → no hay modelo único que serializar
+- [ ] **API Resources:** `$this->whenLoaded('relation')` para TODA relación opcional → no enviar relaciones no pedidas
+- [ ] **Form Requests:** `$validated` solo los campos permitidos, NUNCA `$request->all()`
+- [ ] **Permissions:** Bitmask permissions, NUNCA `is_admin = true`
+- [ ] **Database:** Soft delete selectivo, NUNCA borrar fila si solo querés esconderla
+- [ ] **Logs:** Loggear evento + contexto mínimo, NUNCA payload completo (PII)
+- [ ] **API responses:** NUNCA exponer columnas sensibles (password, tokens, internal_id)
+
+### Frontend (Next.js)
+
+- [ ] **React Query:** `select` solo los campos que el componente renderiza
+- [ ] **WebSocket listeners:** Modifican cache local con `setQueryData`, NUNCA refetch global innecesario
+- [ ] **Zustand stores:** Solo estado verdaderamente global, NUNCA duplicar server state
+- [ ] **API services:** Retornar estructura `{status, data, meta}` sin campos extra
+
+### Pregunta clave (aplicar ANTES de cualquier output)
+
+> **"¿El consumidor va a usar ESTE campo? ¿Lo necesita para esta acción específica?"**
+>
+> - SI SÍ → incluirlo
+> - SI NO → omitirlo
+> - SI NO SÉ → omitirlo (siempre podés agregar después)
+
+### Anti-patrones comunes
+
+**NO**: Mandar el Resource completo en eventos de Delete
+```php
+// ❌ El cliente solo necesita saber QUÉ borrar
+'d' => (new CategoryResource($this->category))->resolve(),
+```
+
+**SÍ**: Array manual con `action`
+```php
+// ✅ El cliente recibe solo lo que necesita
+'d' => [
+    'uuid' => (string) $this->category->uuid,
+    'action' => 'delete',
+],
+```
+
+**NO**: Cargar TODAS las relaciones en un Resource
+```php
+// ❌ Wasted bandwidth si el cliente no las usa
+return [
+    'uuid' => $this->uuid,
+    'user' => new UserResource($this->user), // siempre se carga
+    'club' => new ClubResource($this->club), // siempre se carga
+];
+```
+
+**SÍ**: `whenLoaded()` para relaciones opcionales
+```php
+// ✅ Solo se serializa si fue cargada explícitamente
+return [
+    'uuid' => $this->uuid,
+    'user' => new UserResource($this->whenLoaded('user')),
+    'club' => new ClubResource($this->whenLoaded('club')),
+];
+```
+
+### Regla de los 3 criterios para tomar la decisión
+
+Antes de elegir entre Resource completo o array manual, preguntate:
+
+1. **¿El cliente va a renderizar el objeto entero?** → Resource
+2. **¿El cliente solo necesita un identificador para invalidar/refetch?** → `{uuid, action}`
+3. **¿El cliente solo necesita un campo específico que cambió?** → `{uuid, campo}`
+
+**Las 3 respuestas son mutuamente excluyentes** — solo una aplica por evento.
+
+---
+
 ## 📋 Reglas de verificación para la IA
 
 1. Lee este archivo AL INICIO de cada sesión
 2. Antes de escribir código, identifica qué secciones del mapa aplican
 3. Marca mentalmente cada checkbox mientras escribes código
-4. Si una regla no se puede cumplir o no aplica → preguntar al usuario (HITL)
+4. Si una regla no se puede cumplir o no aplica → preguntar al usuario (HITL hitl_protocol.md)
 5. Si después de escribir descubres que violaste una regla → refactoriza antes de continuar
-6. Lo que no cubra el mapa → aplica critical thinking + HITL (AGENTS.md §2 + §3)
+6. Lo que no cubra el mapa → aplica critical thinking + HITL (AGENTS.md §2 + §3 + hitl_protocol.md)

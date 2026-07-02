@@ -1,4 +1,4 @@
-# Running the App — Guía práctica
+# Running the App — Guía práctica (01/07/26)
 
 ## Dos formas de correr la app
 

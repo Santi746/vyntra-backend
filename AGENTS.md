@@ -78,6 +78,10 @@ Debes rechazar o cuestionar fuertemente cuando:
 
 > Si la probabilidad de ambigüedad supera el **1 %**, DEBES usar la
 > herramienta `question` y **DETENERTE** hasta recibir respuesta.
+>
+> **Nota:** El protocolo HITL completo con límite de 3 acciones, regla de evidencia suficiente,
+> y ejemplos detallados está en `docs/architecture/hitl_protocol.md`. Este archivo es el resumen
+> ejecutivo; el otro es el que se aplica. Ambos son vinculantes.
 
 ### 3.1 Disparadores obligatorios de `question`
 
@@ -122,6 +126,8 @@ Frases obligatorias para estos casos:
 - [ ] He confirmado que el símbolo/columna/ruta que voy a usar existe.
 - [ ] Si toco API: revisé `docs/api_contract.md` y `docs/api_requests_manifest.md`.
 - [ ] Si toco DB: revisé las migraciones reales y el modelo (no `_ide_helper`).
+- [ ] ¿Hay ambigüedad técnica? (archivo, campo, dependencia, diseño no documentado) → si sí, `question` ANTES de investigar.
+- [ ] ¿El cambio propuesto entra en conflicto con algo ya existente? (sistema de permisos duplicado, paquete alternativo, patrón ya implementado)
 
 Si una casilla queda sin marcar → **detente y pregunta**.
 
@@ -179,7 +185,119 @@ Si una verificación falla, NO declares la tarea completa.
 
 ---
 
-## 9. RESUMEN EN UNA LÍNEA
+## 9. ARQUITECTURA MULTI-OFICINA
+
+> El sistema de agentes está organizado en 3 oficinas especializadas + 1 agente principal.
+> Cada oficina tiene un agente orquestador que gestiona sus subagentes.
+
+### 9.1 Agente Principal: Asistente Ejecutor (`@asistente-ejecutor`)
+
+Es el agente con el que interactúas por defecto. Se encarga de:
+
+- Ejecutar tareas de codificación, implementación, debugging y refactor
+- Asistir con preguntas teóricas, conceptos y explicaciones de código
+- **Obligación explícita**: planificar antes de tocar código si la tarea tiene demanda media/alta
+- **No puede ejecutar código sin planificar y sin tu permiso explícito**
+- Usa únicamente subagentes HUÉRFANOS: `@explorar` (explorar código) y `@doc` (documentación)
+- **NUNCA llama a otros agentes** (Supervisión de Proyecto, Agente de Testeo). Esos los llamas tú directamente.
+
+### 9.2 Oficina: Supervisión de Proyecto (`@supervision-de-proyecto`)
+
+Supervisa la calidad del proyecto. La llamas tú cuando necesitas auditoría.
+
+```
+Tú ──> @supervision-de-proyecto ──> @audit, @front-back-consistency, @bestPracticeSenior
+```
+
+| Subagente | Modelo | Para qué |
+|-----------|--------|----------|
+| `@audit` | Kimi K2.6 | Audita código (controllers, models, routes, etc.). **Requiere instrucción explícita.** Audita en cascada. |
+| `@front-back-consistency` | Kimi K2.6 | Verifica consistencia FE↔BE. Más autónomo, si no se le especifica audita todo. |
+| `@bestPracticeSenior` | DeepSeek V4 Flash | Analiza buenas prácticas senior vía webfetch. Solo cuando hay dudas de arquitectura. |
+
+### 9.3 Oficina: Agente de Testeo (`@agente-de-testeo`)
+
+Gestiona todo el testing del proyecto. La llamas tú cuando necesitas testear.
+
+```
+Tú ──> @agente-de-testeo ──> @testExecutor, @CreateTester, @TesterRequests, @breakerTester
+```
+
+| Subagente | Modelo | Para qué |
+|-----------|--------|----------|
+| `@testExecutor` | DeepSeek V4 Flash | Ejecuta tests simples/scripts. Requiere instrucción. |
+| `@CreateTester` | DeepSeek V4 Flash | Crea tests y planes de testeo. Sinergia con @TesterRequests. |
+| `@TesterRequests` | DeepSeek V4 Flash | Ejecuta tests HTTP/WSS. Necesita script de @CreateTester. |
+| `@breakerTester` | DeepSeek V4 Flash | Intenta romper el código. Usar con precaución. |
+
+### 9.4 Subagentes Huérfanos (disponibles para TODOS los agentes)
+
+| Subagente | Para qué |
+|-----------|----------|
+| `@explorar` | Exploración rápida de código (read-only) |
+| `@doc` | Crear y mantener documentación markdown en `docs/` |
+
+---
+
+## 10. AGENTE DE DOCUMENTACIÓN (@doc)
+
+Existe un subagente `@doc` (DeepSeek V4 Flash) especializado exclusivamente en crear y mantener documentación markdown. **DELEGA EN ÉL cuando:**
+
+1. El usuario pida crear un `plan.md` o documento de planificación
+2. Termines una oleada de cambios grande (refactor, nueva capa, cambios masivos) — que `@doc` genere un markdown resumiendo todos los cambios, archivos tocados, decisiones y patrones
+3. El usuario pida documentación, diagramas mermaid, guías o prompts para otra IA
+4. Estés en modo plan — que `@doc` genere el documento de planificación
+
+### Ubicación autónoma de documentos
+
+`@doc` debe determinar **él mismo** dónde ubicar cada documento según estas reglas:
+
+| Tipo de documento | Ubicación |
+|---|---|
+| Plan de implementación | `docs/plans/{nombre_descriptivo}.md` |
+| Guía técnica por capa (events, api, auth, etc.) | `docs/project_steps_guides/{capa}_layer_guides/` |
+| Documento de arquitectura o patrón | `docs/architecture/` |
+| Prompt para otra IA | `docs/ai_usage/` |
+| Documentación de API (contrato, requests) | `docs/` (raíz) |
+
+Si ninguna carpeta existente encaja, `@doc` crea una nueva subcarpeta dentro de `docs/` con nombre descriptivo. No debe preguntar al usuario dónde ponerlo — analiza el contenido y decide.
+
+`@doc` solo edita archivos `.md` en `docs/`. No toca código. No necesita permiso especial.
+
+---
+
+## 11. HERRAMIENTAS MCP — HITL PROXY
+
+Las herramientas nativas `edit` y `write` y `bash` estan denegadas. Usa las herramientas del MCP proxy `hitl-proxy` en su lugar.
+
+### Herramientas disponibles
+
+- `hitl-proxy_edit_hitl(filePath, oldString, newString, approved)` — editar archivo
+- `hitl-proxy_write_hitl(filePath, content, approved)` — crear archivo
+- `hitl-proxy_bash_hitl(command, approved)` — ejecutar comando
+
+### Regla del `approved`
+
+El parametro `approved` debe ser `true` SOLO si preguntaste al usuario via `question()` y este respondio afirmativamente.
+
+**NUNCA** pongas `approved: true` sin haber usado `question()` antes. Si no preguntaste, usa `approved: false`. El proxy devolvera un error recordandote que uses `question()`.
+
+### Flujo correcto
+
+1. Necesitas editar un archivo pero no estas 100% seguro
+2. Usas `question()` para preguntar al usuario
+3. El usuario responde
+4. Recien ahi usas `hitl-proxy_edit_hitl` con `approved: true`
+
+### Flujo de plan aprobado
+
+1. El usuario aprobo un plan via `question()`
+2. Ejecutas el plan completo usando `hitl-proxy_edit_hitl` con `approved: true`
+3. Si en el camino encuentras algo inesperado → DETENTE → usa `question()` de nuevo
+
+---
+
+## 12. RESUMEN EN UNA LÍNEA
 
 > **Verificar > preguntar > planear > aprobar > codificar > testear.**
 > Si dudas, `question`. Si no sabes, dilo. Si no verificaste, no escribas.

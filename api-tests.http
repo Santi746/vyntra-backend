@@ -1,0 +1,419 @@
+### ==========================================
+### 🧪 API TESTS - VYNTRA BACKEND
+### ==========================================
+### Instalación: VS Code → extensión "REST Client" (Huachao Mao)
+### Uso: Envía cada request haciendo clic en "Send Request" arriba del bloque.
+### Los @name capturan respuestas para reutilizar valores (tokens, UUIDs).
+### Para resetear: crea un nuevo usuario cambiando el sufijo @testSuffix.
+### ==========================================
+
+@baseUrl = http://localhost:8000/api
+@testSuffix = dev123
+
+### ==========================================
+### 1. AUTH - REGISTRO (público)
+### ==========================================
+# @name register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "TestUser_{{testSuffix}}",
+  "user_tag": "{{testSuffix}}",
+  "first_name": "Test",
+  "last_name": "User",
+  "email": "{{testSuffix}}@vyntra.test",
+  "password": "password",
+  "password_confirmation": "password"
+}
+
+### ==========================================
+### 1b. AUTH - REGISTRO USUARIO 2 (para amistades)
+### ==========================================
+# @name registerUser2
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "Friend_{{testSuffix}}",
+  "user_tag": "{{testSuffix}}-friend",
+  "first_name": "Friend",
+  "last_name": "User",
+  "email": "{{testSuffix}}-friend@vyntra.test",
+  "password": "password",
+  "password_confirmation": "password"
+}
+
+### ==========================================
+### 2. AUTH - INICIO DE SESIÓN (público)
+### ==========================================
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{testSuffix}}@vyntra.test",
+  "password": "password"
+}
+
+### ==========================================
+### 3. USER - MI PERFIL
+### ==========================================
+GET {{baseUrl}}/user
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 4. USER - ACTUALIZAR PERFIL
+### ==========================================
+PATCH {{baseUrl}}/user
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "bio": "Hola, soy un tester de Vyntra!"
+}
+
+### ==========================================
+### 5. USER - SESIONES ACTIVAS
+### ==========================================
+GET {{baseUrl}}/user/sessions
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 6. USER - PERFIL PÚBLICO DE OTRO USUARIO
+### ==========================================
+GET {{baseUrl}}/users/{{registerUser2.response.body.$.data.user.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 7. CLUBES - LISTAR MIS CLUBES
+### ==========================================
+GET {{baseUrl}}/user/clubs
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 8. CLUBES - CREAR CLUB
+### ==========================================
+# @name createClub
+POST {{baseUrl}}/clubs
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "client_uuid": "{{$guid}}",
+  "name": "Test Club {{testSuffix}}",
+  "category_tag": "gaming",
+  "description": "Un club de prueba creado desde api-tests.http"
+}
+
+### ==========================================
+### 9. CLUBES - PREVIEW PÚBLICO
+### ==========================================
+GET {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/preview
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 10. CLUBES - MOSTRAR DETALLE
+### ==========================================
+GET {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 11. CLUBES - ACTUALIZAR
+### ==========================================
+PATCH {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "description": "Descripción actualizada del club de prueba"
+}
+
+### ==========================================
+### 12. CLUBES - ELIMINAR (soft delete)
+### ==========================================
+DELETE {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### NOTA: Las rutas de Clubes 13+ requieren un club activo.
+### Vuelve a ejecutar #8 (Crear Club) antes de continuar.
+### ==========================================
+
+### ==========================================
+### 13. ROLES - LISTAR ROLES DEL CLUB
+### ==========================================
+GET {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/roles
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 14. ROLES - CREAR ROL
+### ==========================================
+# @name createRole
+POST {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/roles
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "client_uuid": "{{$guid}}",
+  "name": "Moderador",
+  "color": "#FF5733",
+  "permissions": 2
+}
+
+### ==========================================
+### 15. ROLES - ACTUALIZAR (UUID en body, no URL)
+### ==========================================
+PATCH {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/roles
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "uuid": "{{createRole.response.body.$.data.uuid}}",
+  "name": "Super Moderador",
+  "color": "#33FF57"
+}
+
+### ==========================================
+### 16. ROLES - ELIMINAR
+### ==========================================
+DELETE {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/roles/{{createRole.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 17. ROLES - ASIGNAR ROL A MIEMBRO
+### Vuelve a crear un rol (#14) antes de ejecutar.
+### El user_uuid es el del usuario autenticado (owner del club).
+### ==========================================
+POST {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/members/{{login.response.body.$.data.user.uuid}}/roles
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "user_uuid": "{{login.response.body.$.data.user.uuid}}",
+  "role_uuid": "{{createRole.response.body.$.data.uuid}}"
+}
+
+### ==========================================
+### 18. CATEGORÍAS - LISTAR
+### ==========================================
+GET {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/categories
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 19. CATEGORÍAS - CREAR
+### ==========================================
+# @name createCategory
+POST {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/categories
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "client_uuid": "{{$guid}}",
+  "name": "General",
+  "is_private": false
+}
+
+### ==========================================
+### 20. CATEGORÍAS - ACTUALIZAR (UUID en body)
+### ==========================================
+PATCH {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/categories
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "category_uuid": "{{createCategory.response.body.$.data.uuid}}",
+  "name": "General (Actualizada)"
+}
+
+### ==========================================
+### 21. CATEGORÍAS - ELIMINAR
+### ==========================================
+DELETE {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/categories/{{createCategory.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 22. CANALES - LISTAR
+### ==========================================
+GET {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/channels
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 23. CANALES - CREAR (requiere categoría activa)
+### ==========================================
+# @name createChannel
+POST {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/channels
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "client_uuid": "{{$guid}}",
+  "category_uuid": "{{createCategory.response.body.$.data.uuid}}",
+  "name": "chat-general",
+  "type": "text",
+  "is_private": false
+}
+
+### ==========================================
+### 24. CANALES - ACTUALIZAR
+### ==========================================
+PATCH {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/channels/{{createChannel.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "name": "chat-general-editado"
+}
+
+### ==========================================
+### 25. CANALES - ELIMINAR
+### ==========================================
+DELETE {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/channels/{{createChannel.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 26. MIEMBROS - LISTAR
+### ==========================================
+GET {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/members
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 27. MIEMBROS - ELIMINAR MIEMBRO
+### Primero obtén un member UUID del listado anterior y pégalo abajo.
+### ==========================================
+# DELETE {{baseUrl}}/clubs/{{createClub.response.body.$.data.uuid}}/members/MEMBER_UUID_AQUI
+# Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 28. MENSAJES - LISTAR MENSAJES DEL CANAL
+### ==========================================
+GET {{baseUrl}}/channels/{{createChannel.response.body.$.data.uuid}}/messages
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 29. MENSAJES - ENVIAR MENSAJE AL CANAL
+### ==========================================
+# @name sendMessage
+POST {{baseUrl}}/channels/{{createChannel.response.body.$.data.uuid}}/messages
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "content": "Hola mundo! Este es un mensaje de prueba.",
+  "client_uuid": "{{$guid}}"
+}
+
+### ==========================================
+### 30. AMISTADES - LISTAR AMIGOS
+### ==========================================
+GET {{baseUrl}}/user/friends
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 31. AMISTADES - ENVIAR SOLICITUD
+### ==========================================
+# @name sendFriendRequest
+POST {{baseUrl}}/user/friend-requests
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "client_uuid": "{{$guid}}",
+  "receiver_uuid": "{{registerUser2.response.body.$.data.user.uuid}}"
+}
+
+### ==========================================
+### 32. AMISTADES - LISTAR SOLICITUDES PENDIENTES
+### ==========================================
+GET {{baseUrl}}/user/friend-requests
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 33. AMISTADES - RESPONDER SOLICITUD (aceptar)
+### Necesitas el request_uuid de una solicitud recibida.
+### Ejecuta #31 desde el USUARIO 2 (cambia el token abajo).
+### ==========================================
+# PATCH {{baseUrl}}/user/friend-requests/REQUEST_UUID_AQUI
+# Authorization: Bearer {{TOKEN_DEL_USER2}}
+# Content-Type: application/json
+
+# {
+#   "action": "accept"
+# }
+
+### ==========================================
+### 34. NOTIFICACIONES - LISTAR
+### ==========================================
+GET {{baseUrl}}/notifications
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 35. NOTIFICACIONES - MARCAR COMO LEÍDA
+### ==========================================
+# PATCH {{baseUrl}}/notifications/NOTIFICATION_UUID_AQUI/read
+# Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 36. DM - LISTAR CONVERSACIONES
+### ==========================================
+GET {{baseUrl}}/user/dm-conversations
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 37. DM - CREAR CONVERSACIÓN
+### ==========================================
+# @name createDm
+POST {{baseUrl}}/dm-conversations
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "recipient_uuid": "{{registerUser2.response.body.$.data.user.uuid}}"
+}
+
+### ==========================================
+### 38. DM - MOSTRAR CONVERSACIÓN
+### ==========================================
+GET {{baseUrl}}/dm-conversations/{{createDm.response.body.$.data.uuid}}
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 39. DM - LISTAR MENSAJES DE CONVERSACIÓN
+### ==========================================
+GET {{baseUrl}}/dm-conversations/{{createDm.response.body.$.data.uuid}}/messages
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 40. DM - ENVIAR MENSAJE
+### ==========================================
+POST {{baseUrl}}/dm-conversations/{{createDm.response.body.$.data.uuid}}/messages
+Authorization: Bearer {{login.response.body.$.data.token}}
+Content-Type: application/json
+
+{
+  "content": "Hola! Mensaje directo de prueba.",
+  "client_uuid": "{{$guid}}"
+}
+
+### ==========================================
+### 41. EXPLORE - LISTAR CLUBES PÚBLICOS
+### ==========================================
+GET {{baseUrl}}/explore
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 42. SEARCH - BUSCAR
+### ==========================================
+GET {{baseUrl}}/search?q=test&filter=all
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 43. AUTH - CERRAR SESIÓN
+### ==========================================
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{login.response.body.$.data.token}}
+
+### ==========================================
+### 44. VERIFICAR 401 SIN TOKEN
+### ==========================================
+GET {{baseUrl}}/user

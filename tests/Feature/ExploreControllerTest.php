@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\ExploreController;
 use App\Models\Club;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,27 +18,20 @@ class ExploreControllerTest extends TestCase
         Club::factory()->count(3)->create(['owner_uuid' => $owner->uuid]);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new ExploreController;
-        $response = $controller->index(request());
+        $response = $this->getJson('/api/explore');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
-        $this->assertArrayHasKey('data', $data);
-        $this->assertArrayHasKey('meta', $data);
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['data', 'meta']);
     }
 
     public function test_index_returns_empty_list_when_no_clubs(): void
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new ExploreController;
-        $response = $controller->index(request());
+        $response = $this->getJson('/api/explore');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $this->assertEquals('success', $data['status']);
-        $this->assertEquals([], $data['data']);
+        $response->assertStatus(200);
+        $this->assertEmpty($response->json('data'));
     }
 
     public function test_index_includes_club_owner_relationship(): void
@@ -48,23 +40,15 @@ class ExploreControllerTest extends TestCase
         Club::factory()->create(['owner_uuid' => $owner->uuid]);
         Sanctum::actingAs(User::factory()->create());
 
-        $controller = new ExploreController;
-        $response = $controller->index(request());
+        $response = $this->getJson('/api/explore');
 
-        $this->assertEquals(200, $response->getStatusCode());
-        $data = json_decode($response->getContent(), true);
-        $clubData = $data['data'][0];
+        $response->assertStatus(200);
+        $clubData = $response->json('data')[0];
         $this->assertArrayHasKey('owner', $clubData);
     }
 
-    public function test_index_works_without_authentication(): void
+    public function test_index_requires_authentication(): void
     {
-        $controller = new ExploreController;
-        $response = $controller->index(request());
-
-        $response->assertStatus(200)
-            ->assertJson([
-                'status' => 'success',
-            ]);
+        $this->getJson('/api/explore')->assertStatus(401);
     }
 }

@@ -17,13 +17,11 @@ class DebugExploreTest extends TestCase
         $user = User::factory()->create();
         Club::factory()->count(3)->create();
 
-        Sanctum::actingAs($user, 'sanctum');
+        Sanctum::actingAs($user);
 
         $response = $this->getJson('/api/explore');
 
-        echo "\nStatus: ".$response->getStatusCode();
-        echo "\nContent: ".$response->getContent();
-
         $response->assertStatus(200);
+        $this->assertNotEmpty($response->json('data'));
     }
 }
