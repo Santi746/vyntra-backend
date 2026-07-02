@@ -185,7 +185,61 @@ Si una verificación falla, NO declares la tarea completa.
 
 ---
 
-## 9. AGENTE DE DOCUMENTACIÓN (@doc)
+## 9. ARQUITECTURA MULTI-OFICINA
+
+> El sistema de agentes está organizado en 3 oficinas especializadas + 1 agente principal.
+> Cada oficina tiene un agente orquestador que gestiona sus subagentes.
+
+### 9.1 Agente Principal: Asistente Ejecutor (`@asistente-ejecutor`)
+
+Es el agente con el que interactúas por defecto. Se encarga de:
+
+- Ejecutar tareas de codificación, implementación, debugging y refactor
+- Asistir con preguntas teóricas, conceptos y explicaciones de código
+- **Obligación explícita**: planificar antes de tocar código si la tarea tiene demanda media/alta
+- **No puede ejecutar código sin planificar y sin tu permiso explícito**
+- Usa únicamente subagentes HUÉRFANOS: `@explorar` (explorar código) y `@doc` (documentación)
+- **NUNCA llama a otros agentes** (Supervisión de Proyecto, Agente de Testeo). Esos los llamas tú directamente.
+
+### 9.2 Oficina: Supervisión de Proyecto (`@supervision-de-proyecto`)
+
+Supervisa la calidad del proyecto. La llamas tú cuando necesitas auditoría.
+
+```
+Tú ──> @supervision-de-proyecto ──> @audit, @front-back-consistency, @bestPracticeSenior
+```
+
+| Subagente | Modelo | Para qué |
+|-----------|--------|----------|
+| `@audit` | Kimi K2.6 | Audita código (controllers, models, routes, etc.). **Requiere instrucción explícita.** Audita en cascada. |
+| `@front-back-consistency` | Kimi K2.6 | Verifica consistencia FE↔BE. Más autónomo, si no se le especifica audita todo. |
+| `@bestPracticeSenior` | DeepSeek V4 Flash | Analiza buenas prácticas senior vía webfetch. Solo cuando hay dudas de arquitectura. |
+
+### 9.3 Oficina: Agente de Testeo (`@agente-de-testeo`)
+
+Gestiona todo el testing del proyecto. La llamas tú cuando necesitas testear.
+
+```
+Tú ──> @agente-de-testeo ──> @testExecutor, @CreateTester, @TesterRequests, @breakerTester
+```
+
+| Subagente | Modelo | Para qué |
+|-----------|--------|----------|
+| `@testExecutor` | DeepSeek V4 Flash | Ejecuta tests simples/scripts. Requiere instrucción. |
+| `@CreateTester` | DeepSeek V4 Flash | Crea tests y planes de testeo. Sinergia con @TesterRequests. |
+| `@TesterRequests` | DeepSeek V4 Flash | Ejecuta tests HTTP/WSS. Necesita script de @CreateTester. |
+| `@breakerTester` | DeepSeek V4 Flash | Intenta romper el código. Usar con precaución. |
+
+### 9.4 Subagentes Huérfanos (disponibles para TODOS los agentes)
+
+| Subagente | Para qué |
+|-----------|----------|
+| `@explorar` | Exploración rápida de código (read-only) |
+| `@doc` | Crear y mantener documentación markdown en `docs/` |
+
+---
+
+## 10. AGENTE DE DOCUMENTACIÓN (@doc)
 
 Existe un subagente `@doc` (DeepSeek V4 Flash) especializado exclusivamente en crear y mantener documentación markdown. **DELEGA EN ÉL cuando:**
 
@@ -212,7 +266,7 @@ Si ninguna carpeta existente encaja, `@doc` crea una nueva subcarpeta dentro de 
 
 ---
 
-## 10. HERRAMIENTAS MCP — HITL PROXY
+## 11. HERRAMIENTAS MCP — HITL PROXY
 
 Las herramientas nativas `edit` y `write` y `bash` estan denegadas. Usa las herramientas del MCP proxy `hitl-proxy` en su lugar.
 
@@ -243,7 +297,7 @@ El parametro `approved` debe ser `true` SOLO si preguntaste al usuario via `ques
 
 ---
 
-## 11. RESUMEN EN UNA LÍNEA
+## 12. RESUMEN EN UNA LÍNEA
 
 > **Verificar > preguntar > planear > aprobar > codificar > testear.**
 > Si dudas, `question`. Si no sabes, dilo. Si no verificaste, no escribas.
