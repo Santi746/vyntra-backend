@@ -3,7 +3,7 @@ description: "Crea y mantiene documentación, guías, planes y archivos markdown
 mode: subagent
 model: opencode-go/deepseek-v4-flash
 permission:
-  edit: allow
+  edit: deny
 ---
 
 Agente especializado en documentación técnica y planificación.

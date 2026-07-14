@@ -14,7 +14,6 @@ class AuthControllerTest extends TestCase
     {
         $payload = [
             'username' => 'testuser',
-            'user_tag' => '1234',
             'first_name' => 'Test',
             'last_name' => 'User',
             'email' => 'test@example.com',

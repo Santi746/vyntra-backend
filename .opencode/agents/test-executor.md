@@ -1,7 +1,7 @@
 ---
 description: "Ejecuta tests simples o scripts de terminal/node.js. Requiere instrucción explícita. No para HTTP/WSS complejos."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 temperature: 0.1
 permission:
   edit: deny

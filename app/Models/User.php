@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\ClubPermission;
+use App\Models\Concerns\ValidatesUuidRouteBinding;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Collection;
@@ -16,8 +18,11 @@ use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Notifications\DatabaseNotificationCollection;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Sanctum\PersonalAccessToken;
+use PragmaRX\Google2FA\Google2FA;
 
 // Trait obligatorio para UUIDs
 
@@ -25,10 +30,9 @@ use Laravel\Sanctum\PersonalAccessToken;
  * Modelo principal de usuario del sistema.
  *
  * @property string $uuid // Clave primaria
- * @property string $username
- * @property string $user_tag
- * @property string $first_name
- * @property string $last_name
+ * @property string|null $username // único. Null temporalmente tras OAuth hasta que complete-profile
+ * @property string|null $first_name // Null temporalmente tras OAuth hasta que complete-profile
+ * @property string|null $last_name // Null temporalmente tras OAuth hasta que complete-profile
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -48,12 +52,32 @@ use Laravel\Sanctum\PersonalAccessToken;
  *
  * @mixin \Eloquent
  */
-#[Fillable(['username', 'user_tag', 'first_name', 'last_name', 'email', 'password', 'bio', 'avatar_url', 'banner_url', 'location', 'is_online'])]
+#[Fillable([
+    'username',
+    'first_name',
+    'last_name',
+    'email',
+    'password',
+    'bio',
+    'avatar_url',
+    'banner_url',
+    'location',
+    'is_online',
+    // --- Socialite ---
+    'provider',
+    'provider_id',
+    'provider_token',
+    'provider_refresh_token',
+    // --- 2FA TOTP ---
+    'two_factor_secret',
+    'two_factor_enabled',
+    'two_factor_backup_codes',
+])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasUuids, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, HasUuids, MustVerifyEmail, Notifiable, SoftDeletes, ValidatesUuidRouteBinding;
 
     // Configurar explícitamente que la llave primaria es uuid
     protected $table = 'users'; // La tabla se llama users
@@ -65,8 +89,113 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // --- 2FA TOTP ---
+            'two_factor_enabled' => 'boolean', // si esta activo el 2fa o no
+            'two_factor_backup_codes' => 'array',
         ];
     }
+
+    // / Logica de AUTH 2FA,TOTP,Backup Code
+
+    /**
+     * Verifica si el usuario tiene 2FA activo y confirmado.
+     *
+     * Retorna true SOLO si:
+     *  - two_factor_enabled = true (el usuario confirmó 2FA con un primer código TOTP)
+     *  - Tiene un secret guardado (two_factor_secret no es null)
+     */
+    public function has2faEnabled(): bool
+    {
+        return $this->two_factor_enabled && $this->two_factor_secret !== null;
+    }
+
+    /**
+     * Verifica un código TOTP contra el secret del usuario.
+     *
+     * Usa el paquete pragmarx/google2fa con una ventana de ±1 paso
+     * (aprox. 90 segundos de tolerancia) para compensar diferencias
+     * de reloj entre el servidor y el teléfono del usuario.
+     *
+     * @param  string  $code  Código de 6 dígitos ingresado por el usuario
+     */
+    public function verifyTwoFactorCode(string $code): bool
+    {
+        if (! $this->two_factor_secret) {
+            return false;
+        }
+
+        $google2fa = new Google2FA;
+
+        return $google2fa->verifyKey(
+            $this->two_factor_secret,
+            $code,
+            1  // ventana de tolerancia: ±1 paso (30s antes, 30s después)
+        );
+    }
+
+    /**
+     * Verifica y consume un backup code.
+     *
+     * Recorre el array de backup codes, compara cada uno con el código
+     * ingresado (usando Hash::check porque los códigos se guardan
+     * hasheados con bcrypt). Si encuentra coincidencia:
+     *  1. Elimina ese código del array
+     *  2. Guarda el array actualizado en la DB
+     *  3. Retorna true
+     *
+     * @param  string  $code  Backup code ingresado (formato: XXXXXXXX)
+     */
+    public function useBackupCode(string $code): bool
+    {
+        $backupCodes = $this->two_factor_backup_codes ?? [];
+
+        foreach ($backupCodes as $index => $hashedCode) {
+            if (Hash::check($code, $hashedCode)) {
+                // Eliminar el código usado
+                unset($backupCodes[$index]);
+                $this->two_factor_backup_codes = array_values($backupCodes);
+                $this->save();
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Genera 10 backup codes hasheados y los guarda en el modelo.
+     *
+     * @return array<string> Códigos en texto plano (se muestran una sola vez al usuario)
+     */
+    public function generateBackupCodes(): array
+    {
+        $plainCodes = [];
+        $hashedCodes = [];
+
+        for ($i = 0; $i < 10; $i++) {
+            $plain = strtoupper(Str::random(8));
+            $plainCodes[] = $plain;
+            $hashedCodes[] = Hash::make($plain);
+        }
+
+        $this->two_factor_backup_codes = $hashedCodes;
+
+        return $plainCodes;
+    }
+
+    /**
+     * Desactiva 2FA: limpia secret, flag y backup codes.
+     */
+    public function disableTwoFactor(): void
+    {
+        $this->two_factor_secret = null;
+        $this->two_factor_enabled = false;
+        $this->two_factor_backup_codes = null;
+        $this->save();
+    }
+
+    // / --- RELACIONES SQL CON QUERIES ---
 
     // PERSPECTIVA: Un Usuario tiene muchas Solicitudes de Amistad enviadas por él.
     // FK DESTINO: La llave foránea 'sender_uuid' está físicamente en la tabla 'friendships'.
@@ -108,6 +237,8 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class, 'user_uuid', 'uuid');
     }
+
+    // / Verificacion de Permisos de usuario
 
     /**
      * Verifica si el usuario tiene un permiso específico dentro de un club.

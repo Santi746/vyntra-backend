@@ -13,7 +13,6 @@ class RoutesWorkTest extends TestCase
     {
         $register = $this->postJson('/api/auth/register', [
             'username' => 'testuser',
-            'user_tag' => 'test-001',
             'first_name' => 'Test',
             'last_name' => 'User',
             'email' => 'test@test.com',

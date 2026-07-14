@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ValidatesUuidRouteBinding;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,7 +31,7 @@ use Illuminate\Support\Carbon;
 #[Fillable(['club_uuid', 'name', 'color', 'is_fixed', 'sort_order', 'permissions', 'client_uuid'])]
 class ClubRole extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, ValidatesUuidRouteBinding;
 
     protected $table = 'club_roles';
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ValidatesUuidRouteBinding;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,7 +31,7 @@ use Illuminate\Support\Carbon;
 #[Fillable(['dm_conversation_uuid', 'sender_uuid', 'parent_message_uuid', 'content', 'status', 'client_uuid'])]
 class DmMessage extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, ValidatesUuidRouteBinding;
 
     protected $table = 'dm_messages';
 

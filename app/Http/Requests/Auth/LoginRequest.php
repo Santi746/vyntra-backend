@@ -3,8 +3,6 @@
 namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Gestiona la validación para el inicio de sesión de usuarios en la plataforma.
@@ -37,20 +35,5 @@ class LoginRequest extends FormRequest
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
         ];
-    }
-
-    /**
-     * Intenta autenticar las credenciales de la petición.
-     *
-     *
-     * @throws ValidationException
-     */
-    public function authenticate(): void
-    {
-        if (! Auth::attempt($this->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => ['Credenciales inválidas.'],
-            ]);
-        }
     }
 }

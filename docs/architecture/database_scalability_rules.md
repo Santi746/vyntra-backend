@@ -25,7 +25,7 @@ En sistemas de chat masivos (tipo Discord), cargar los mensajes cronológicament
 
 ### 3. Restricciones UNIQUE Compuestas (Protección de Integridad)
 Cuando una combinación de dos datos no debe repetirse jamás, la validación en el controlador de Laravel **NO es suficiente**. Se **DEBE** imponer en la base de datos con un constraint `UNIQUE`.
-- **Ejemplo Correcto:** `$table->unique(['username', 'user_tag']);`
+- **Ejemplo Correcto:** `$table->unique('username');`
 - **Explicación:** Si un usuario es `hola` y su tag es `#4444`, nadie más en toda la base de datos puede tener esa misma combinación. Si un error del frontend dispara dos peticiones idénticas al mismo milisegundo (Race Condition), PostgreSQL lanza un error a nivel de hardware, protegiendo la base de datos de datos corruptos o duplicados.
 
 ### 4. Índices Compuestos para Búsqueda y Ordenamiento

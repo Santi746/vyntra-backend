@@ -102,7 +102,7 @@ class StoreChannelMessageRequest extends FormRequest
 
 #### `StoreUserRequest` (Registro)
 - [ ] `username` → required, string, max:50
-- [ ] `user_tag` → required, string, max:50, unique:users,user_tag
+
 - [ ] `first_name` → required, string, max:50
 - [ ] `last_name` → required, string, max:50
 - [ ] `email` → required, email, max:255, unique:users,email

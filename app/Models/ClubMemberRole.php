@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ValidatesUuidRouteBinding;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,7 +23,7 @@ use Illuminate\Support\Carbon;
 #[Fillable(['club_member_uuid', 'role_uuid'])]
 class ClubMemberRole extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, ValidatesUuidRouteBinding;
 
     protected $table = 'club_member_roles';
 

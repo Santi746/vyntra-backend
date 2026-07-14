@@ -54,6 +54,11 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    // URL del frontend (SPA). Usada por la ruta nombrada 'password.reset' y por
+    // los callbacks de Socialite para redirigir fuera de la API. En producción
+    // debe apuntar al dominio real del frontend (p.ej. https://app.vyntra.com).
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

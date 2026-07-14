@@ -42,7 +42,6 @@
 ```json
 {
   "username": "required|string|max:50",
-  "user_tag": "required|string|max:50|unique:users,user_tag",
   "first_name": "required|string|max:50",
   "last_name": "required|string|max:50",
   "email": "required|string|email|max:255|unique:users,email",
@@ -56,7 +55,7 @@
 {
   "status": "success",
   "data": {
-    "user": { "uuid": "string", "username": "string", "user_tag": "string", ... },
+    "user": { "uuid": "string", "username": "string", ... },
     "token": "string"
   }
 }
@@ -133,7 +132,6 @@
   "data": {
     "uuid": "string",
     "username": "string",
-    "user_tag": "string",
     "first_name": "string",
     "last_name": "string",
     "avatar_url": "string|null",
@@ -174,7 +172,6 @@
   "data": {
     "uuid": "string",
     "username": "string",
-    "user_tag": "string",
     "first_name": "string",
     "last_name": "string",
     "avatar_url": "string|null",

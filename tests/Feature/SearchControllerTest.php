@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Club;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class SearchControllerTest extends TestCase
@@ -16,7 +15,7 @@ class SearchControllerTest extends TestCase
     {
         User::factory()->create(['username' => 'testuser']);
         Club::factory()->create(['name' => 'Test Club']);
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create());
 
         $response = $this->getJson('/api/search?q=Test');
 
@@ -28,7 +27,7 @@ class SearchControllerTest extends TestCase
     {
         Club::factory()->create(['name' => 'Gaming Club']);
         User::factory()->create(['username' => 'testuser']);
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create());
 
         $response = $this->getJson('/api/search?q=Test&filter=clubs');
 
@@ -41,8 +40,8 @@ class SearchControllerTest extends TestCase
     public function test_index_returns_users_only_with_filter(): void
     {
         Club::factory()->create(['name' => 'Gaming Club']);
-        User::factory()->create(['username' => 'testuser', 'user_tag' => '1234']);
-        Sanctum::actingAs(User::factory()->create());
+        User::factory()->create(['username' => 'testuser']);
+        $this->actingAs(User::factory()->create());
 
         $response = $this->getJson('/api/search?q=test&filter=users');
 
@@ -54,7 +53,7 @@ class SearchControllerTest extends TestCase
 
     public function test_index_requires_query_parameter(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create());
 
         $this->getJson('/api/search')->assertStatus(422);
     }
@@ -64,12 +63,12 @@ class SearchControllerTest extends TestCase
         $this->getJson('/api/search?q=test')->assertStatus(401);
     }
 
-    public function test_index_searches_by_user_tag(): void
+    public function test_index_searches_by_username(): void
     {
-        User::factory()->create(['username' => 'john', 'user_tag' => 'unique999']);
-        Sanctum::actingAs(User::factory()->create());
+        User::factory()->create(['username' => 'john_unique_999']);
+        $this->actingAs(User::factory()->create());
 
-        $response = $this->getJson('/api/search?q=unique999');
+        $response = $this->getJson('/api/search?q=john_unique_999');
 
         $response->assertStatus(200);
         $this->assertNotEmpty($response->json('data.users.data'));
@@ -81,7 +80,7 @@ class SearchControllerTest extends TestCase
             'name' => 'Some Club',
             'description' => 'This is about gaming',
         ]);
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create());
 
         $response = $this->getJson('/api/search?q=gaming');
 
@@ -91,7 +90,7 @@ class SearchControllerTest extends TestCase
 
     public function test_index_returns_empty_results_when_no_match(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create());
 
         $response = $this->getJson('/api/search?q=nonexistentquery12345');
 
@@ -102,7 +101,7 @@ class SearchControllerTest extends TestCase
 
     public function test_index_validates_filter_value(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create());
 
         $this->getJson('/api/search?q=test&filter=invalid')->assertStatus(422);
     }

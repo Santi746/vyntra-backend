@@ -16,13 +16,11 @@ class SessionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'uuid' => (string) ($this->ulid ?? $this->id),
-            'os' => $this->os,
-            'browser' => $this->browser,
-            'ip' => $this->ip,
-            'location' => $this->location,
+            'id' => (string) $this->id,
+            'device_name' => $this->name,
             'is_current' => $request->user()?->currentAccessToken()?->id === $this->id,
-            'type' => $this->name,
+            'last_used_at' => $this->last_used_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

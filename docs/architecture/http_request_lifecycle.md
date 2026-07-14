@@ -117,11 +117,4 @@ Cada capa del diagrama corresponde a una carpeta específica dentro de tu proyec
 | **Model** | Definir relaciones, reglas de datos, consultas SQL | Validar datos del frontend, devolver respuestas HTTP |
 | **API Resource** | Transformar modelos PHP en JSON limpio | Consultar la BD, validar datos |
 
----
 
-## 6. ¿Y el Tiempo Real? (WebSockets / Reverb)
-
-El tiempo real se implementa **al final**, una vez que toda la API REST funcione. El Controller, después de guardar en la base de datos, dispara un **Evento** que notifica a los demás usuarios conectados al canal a través de **Laravel Reverb** (servidor WebSocket).
-
-> [!NOTE]
-> **No te preocupes por esta capa todavía.** Primero construimos la casa, después le ponemos el WiFi.

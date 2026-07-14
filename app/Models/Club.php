@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ValidatesUuidRouteBinding;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['name', 'description', 'avatar_url', 'banner_url', 'owner_uuid', 'category_tag', 'client_uuid'])]
 class Club extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, ValidatesUuidRouteBinding;
 
     // la tabla asignada es clubs
     protected $table = 'clubs';

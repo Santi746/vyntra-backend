@@ -6,7 +6,6 @@ use App\Models\Friendship;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class FriendshipControllerTest extends TestCase
@@ -22,7 +21,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $friend->uuid,
             'status' => 'accepted',
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $response = $this->getJson('/api/user/friends');
 
@@ -39,7 +38,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $friend->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $response = $this->getJson('/api/user/friends');
 
@@ -61,7 +60,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $user->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $response = $this->getJson('/api/user/friend-requests');
 
@@ -83,7 +82,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $user->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $response = $this->getJson('/api/user/friend-requests');
 
@@ -100,7 +99,7 @@ class FriendshipControllerTest extends TestCase
     {
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
-        Sanctum::actingAs($sender);
+        $this->actingAs($sender);
 
         $response = $this->postJson('/api/user/friend-requests', [
             'client_uuid' => Str::uuid()->toString(),
@@ -121,7 +120,7 @@ class FriendshipControllerTest extends TestCase
     {
         $sender = User::factory()->create();
         $receiver = User::factory()->create();
-        Sanctum::actingAs($sender);
+        $this->actingAs($sender);
 
         $payload = [
             'client_uuid' => Str::uuid()->toString(),
@@ -140,7 +139,7 @@ class FriendshipControllerTest extends TestCase
     public function test_store_prevents_self_friendship(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $this->postJson('/api/user/friend-requests', [
             'client_uuid' => Str::uuid()->toString(),
@@ -151,7 +150,7 @@ class FriendshipControllerTest extends TestCase
     public function test_store_requires_valid_receiver(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $this->postJson('/api/user/friend-requests', [
             'client_uuid' => Str::uuid()->toString(),
@@ -176,7 +175,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $receiver->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($receiver);
+        $this->actingAs($receiver);
 
         $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
             'action' => 'accept',
@@ -197,7 +196,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $receiver->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($receiver);
+        $this->actingAs($receiver);
 
         $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
             'action' => 'decline',
@@ -218,7 +217,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $receiver->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($receiver);
+        $this->actingAs($receiver);
 
         $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
             'action' => 'reject',
@@ -233,7 +232,7 @@ class FriendshipControllerTest extends TestCase
     public function test_respond_returns_404_for_nonexistent_request(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $this->patchJson('/api/user/friend-requests/nonexistent-uuid', [
             'action' => 'accept',
@@ -250,7 +249,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $user2->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($user3);
+        $this->actingAs($user3);
 
         $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
             'action' => 'accept',
@@ -266,7 +265,7 @@ class FriendshipControllerTest extends TestCase
             'receiver_uuid' => $receiver->uuid,
             'status' => 'pending',
         ]);
-        Sanctum::actingAs($sender);
+        $this->actingAs($sender);
 
         $this->patchJson('/api/user/friend-requests/'.$friendship->uuid, [
             'action' => 'accept',
@@ -275,7 +274,7 @@ class FriendshipControllerTest extends TestCase
 
     public function test_respond_requires_authentication(): void
     {
-        $this->patchJson('/api/user/friend-requests/some-uuid', [
+        $this->patchJson('/api/user/friend-requests/00000000-0000-0000-0000-000000000000', [
             'action' => 'accept',
         ])->assertStatus(401);
     }

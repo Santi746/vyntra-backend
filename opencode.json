@@ -3,10 +3,7 @@
   "instructions": ["rules.md", "docs/architecture/mandatory_patterns.md", "AGENTS.md", "docs/architecture/hitl_protocol.md", "PIN.md"],
   "agent": {
     "asistente-ejecutor": {
-      "description": "Asistente Ejecutor: Planifica, implementa y depura código con el usuario. Siempre crea un plan.md antes de ejecutar.",
-      "permission": {
-        "edit": "allow"
-      }
+      "description": "Asistente Ejecutor: Planifica, implementa y depura código con el usuario. Siempre crea un plan.md antes de ejecutar."
     }
   },
    "mcp": {

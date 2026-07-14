@@ -18,7 +18,7 @@ class StoreUserRequest extends FormRequest
 
     /**
      * Prepara los datos para la validación.
-     * Normaliza el correo electrónico convirtiéndolo a minúsculas antes de validar.
+     * Normaliza email y username a minúsculas antes de validar.
      */
     protected function prepareForValidation(): void
     {
@@ -27,15 +27,19 @@ class StoreUserRequest extends FormRequest
                 'email' => strtolower($this->email),
             ]);
         }
+        if ($this->has('username')) {
+            $this->merge([
+                'username' => strtolower($this->username),
+            ]);
+        }
     }
 
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string', 'max:50'],
-            'user_tag' => ['required', 'string', 'max:50', 'unique:users,user_tag'],
-            'first_name' => ['required', 'string', 'max:50'],
-            'last_name' => ['required', 'string', 'max:50'],
+            'username' => ['required', 'string', 'max:50', 'unique:users,username', 'regex:/^[^<>]+$/'],
+            'first_name' => ['required', 'string', 'max:50', 'regex:/^[^<>]+$/'],
+            'last_name' => ['required', 'string', 'max:50', 'regex:/^[^<>]+$/'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];

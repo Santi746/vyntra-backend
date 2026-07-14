@@ -1,7 +1,7 @@
 ---
 description: "Intenta romper el código: estrés, vulnerabilidades, peticiones simultáneas. Usar con precaución. Entrega informes."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 temperature: 0.1
 permission:
   edit: deny

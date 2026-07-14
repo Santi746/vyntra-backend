@@ -163,7 +163,6 @@ Content-Type: application/json
 
 {
   "username": "tester",
-  "user_tag": "tester-1337",
   "first_name": "Test",
   "last_name": "User",
   "email": "test@example.com",

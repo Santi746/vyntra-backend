@@ -26,7 +26,6 @@ class DatabaseSeeder extends Seeder
         // 1. Crear un usuario Fijo de prueba para que tú lo uses en Insomnia
         $testUser = User::factory()->create([
             'username' => 'tester_vyntra',
-            'user_tag' => 'tester-1337',
             'first_name' => 'Tester',
             'last_name' => 'Vyntra',
             'email' => 'test@example.com',

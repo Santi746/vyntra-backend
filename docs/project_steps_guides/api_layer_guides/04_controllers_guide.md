@@ -231,7 +231,6 @@ public function register(StoreUserRequest $request): JsonResponse
 
     $user = User::create([
         'username'   => $validated['username'],
-        'user_tag'   => $validated['user_tag'],
         'first_name' => $validated['first_name'],
         'last_name'  => $validated['last_name'],
         'email'      => $validated['email'],

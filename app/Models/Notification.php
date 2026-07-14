@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ValidatesUuidRouteBinding;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -30,7 +31,7 @@ use Illuminate\Support\Carbon;
 #[Hidden(['data'])]
 class Notification extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, ValidatesUuidRouteBinding;
 
     // La tabla asignada es notifications
     protected $table = 'notifications';

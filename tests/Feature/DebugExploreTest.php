@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Club;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DebugExploreTest extends TestCase
@@ -17,7 +16,7 @@ class DebugExploreTest extends TestCase
         $user = User::factory()->create();
         Club::factory()->count(3)->create();
 
-        Sanctum::actingAs($user);
+        $this->actingAs($user);
 
         $response = $this->getJson('/api/explore');
 

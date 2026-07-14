@@ -1,7 +1,7 @@
 ---
 description: "Gestiona todo el testing del proyecto. Orquesta a @testExecutor, @CreateTester, @TesterRequests y @breakerTester. Reporta resultados al usuario."
 mode: primary
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 temperature: 0.1
 permission:
   edit: deny

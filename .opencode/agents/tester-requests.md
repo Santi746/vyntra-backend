@@ -1,7 +1,7 @@
 ---
 description: "Ejecuta tests HTTP/WSS y flujos completos. Requiere script/comando. No crea tests. Sinergia con @CreateTester."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 temperature: 0.1
 permission:
   edit: deny

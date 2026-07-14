@@ -12,7 +12,6 @@ use App\Http\Resources\DmMessageResource;
 use App\Http\Resources\FriendshipResource;
 use App\Http\Resources\MessageResource;
 use App\Http\Resources\NotificationResource;
-use App\Http\Resources\SessionResource;
 use App\Http\Resources\UserResource;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -33,7 +32,6 @@ class ResourceStringCastingTest extends TestCase
             'DmConversationResource' => [DmConversationResource::class, ['uuid']],
             'FriendshipResource' => [FriendshipResource::class, ['uuid', 'friendship_uuid']],
             'NotificationResource' => [NotificationResource::class, ['uuid']],
-            'SessionResource' => [SessionResource::class, ['uuid']],
         ];
     }
 

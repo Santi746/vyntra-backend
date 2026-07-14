@@ -11,7 +11,6 @@ return new class extends Migration
         Schema::create('users', function (Blueprint $table) {
             $table->uuid('uuid')->primary();
             $table->string('username'); // Nombre visual o "Display Name" (no único)
-            $table->string('user_tag')->unique(); // Identificador global único (ej: @usuario)
             $table->string('first_name');
             $table->string('last_name');
             $table->string('email')->unique();
@@ -27,6 +26,7 @@ return new class extends Migration
             $table->softDeletes();
         });
 
+        // guarda el token de resetear password usado por ForgotPasswordController
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');

@@ -68,9 +68,9 @@ class RoutesThrottleTest extends TestCase
             foreach ($routes as $route) {
                 if ($route->uri() === $uri) {
                     $this->assertContains(
-                        'throttle:60,1',
+                        'throttle:10,1',
                         $route->middleware(),
-                        "{$method} {$uri} debe tener middleware throttle:60,1"
+                        "{$method} {$uri} debe tener middleware throttle:10,1"
                     );
                     $found = true;
                     break;
@@ -92,9 +92,9 @@ class RoutesThrottleTest extends TestCase
             foreach ($routes as $route) {
                 if ($route->uri() === $uri) {
                     $this->assertNotContains(
-                        'throttle:60,1',
+                        'throttle:10,1',
                         $route->middleware(),
-                        "{$method} {$uri} NO debe tener middleware throttle:60,1"
+                        "{$method} {$uri} NO debe tener middleware throttle:10,1"
                     );
                     $found = true;
                     break;

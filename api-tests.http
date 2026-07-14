@@ -19,7 +19,6 @@ Content-Type: application/json
 
 {
   "username": "TestUser_{{testSuffix}}",
-  "user_tag": "{{testSuffix}}",
   "first_name": "Test",
   "last_name": "User",
   "email": "{{testSuffix}}@vyntra.test",
@@ -36,7 +35,6 @@ Content-Type: application/json
 
 {
   "username": "Friend_{{testSuffix}}",
-  "user_tag": "{{testSuffix}}-friend",
   "first_name": "Friend",
   "last_name": "User",
   "email": "{{testSuffix}}-friend@vyntra.test",

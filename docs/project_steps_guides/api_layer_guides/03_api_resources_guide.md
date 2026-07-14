@@ -91,7 +91,7 @@ class MessageResource extends JsonResource
 ### 3. Campos por Resource (Según el api_contract.md y api_requests_manifest.md)
 
 #### `UserResource`
-- [ ] `uuid`, `username`, `user_tag`, `first_name`, `last_name`
+- [ ] `uuid`, `username`, `first_name`, `last_name`
 - [ ] `avatar_url`, `banner_url`, `bio`, `location`
 - [ ] `is_online` *(boolean, no string)*
 - [ ] `created_at` y `updated_at` *(ISO 8601)*

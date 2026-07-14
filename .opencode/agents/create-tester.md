@@ -1,7 +1,7 @@
 ---
 description: "Crea tests y planes de testeo: scripts Node.js, documentación markdown AI-friendly. No ejecuta. Requiere explicación explícita."
 mode: subagent
-model: opencode-go/deepseek-v4-flash
+model: opencode/deepseek-v4-flash-free
 temperature: 0.1
 permission:
   edit: deny

@@ -23,15 +23,16 @@ class SearchController extends Controller
         // Calculamos SIEMPRE ambos buckets, aunque el filtro pida solo uno.
         // Esto garantiza que el frontend siempre reciba las dos claves (`clubs` y `users`)
         // en la respuesta, evitando errores de "cannot read property of undefined" en el cliente.
+        // Búsqueda case-insensitive DB-agnostic: 'ilike' es solo de PostgreSQL y
+        // rompe en SQLite (tests). LOWER(col) LIKE LOWER(?) funciona en ambos motores.
         $clubs = in_array($filter, ['all', 'clubs'])
-            ? Club::where('name', 'ilike', "%{$query}%")
-                ->orWhere('description', 'ilike', "%{$query}%")
+            ? Club::whereRaw('LOWER(name) LIKE LOWER(?)', ['%'.strtolower($query).'%'])
+                ->orWhereRaw('LOWER(description) LIKE LOWER(?)', ['%'.strtolower($query).'%'])
                 ->with('clubOwner')
                 ->cursorPaginate(10)
             : null;
         $users = in_array($filter, ['all', 'users'])
-            ? User::where('username', 'ilike', "%{$query}%")
-                ->orWhere('user_tag', 'ilike', "%{$query}%")
+            ? User::whereRaw('LOWER(username) LIKE LOWER(?)', ['%'.strtolower($query).'%'])
                 ->cursorPaginate(10)
             : null;
 

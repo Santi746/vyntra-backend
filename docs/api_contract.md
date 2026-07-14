@@ -59,7 +59,6 @@ flowchart TD
 {
   "uuid": "string",
   "username": "string",
-  "user_tag": "string",
   "first_name": "string",
   "last_name": "string",
   "email": "string",

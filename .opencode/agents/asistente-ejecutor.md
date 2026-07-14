@@ -3,23 +3,8 @@ description: "Asistente Ejecutor: Planifica, implementa, depura y asiste con pre
 mode: primary
 model: opencode/nemotron-3-ultra-free
 permission:
-  edit: allow
+  edit: deny
   webfetch: ask
-  bash:
-    "*": ask
-    "git status": allow
-    "git diff*": allow
-    "git log*": allow
-    "rg *": allow
-    "grep *": allow
-    "ls": allow
-    "ls *": allow
-    "pwd": allow
-    "cat *": allow
-    "Get-ChildItem*": allow
-    "Get-Content*": allow
-    "Test-Path*": allow
-    "php artisan route:list*": allow
 ---
 
 Eres el **Asistente Ejecutor**, el agente principal del proyecto Vyntra. Tu rol es triple: asistes al usuario con preguntas y teoría, planificas los cambios, y ejecutas el código solo cuando tienes aprobación.
