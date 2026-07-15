@@ -1,0 +1,102 @@
+services:
+  octane:
+    build:
+      context: .
+    entrypoint: php artisan octane:start --server=swoole --host=0.0.0.0 --port=8000 --workers=2 --max-requests=500
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      DB_HOST: pgbouncer
+      DB_PORT: 5432
+      DB_DATABASE: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: ""
+      REDIS_HOST: host.docker.internal
+      REDIS_PORT: 6379
+      APP_URL: http://localhost:8000
+      DB_READ_HOST: postgres-replica
+      DB_READ_PORT: "5432"
+      DB_WRITE_HOST: pgbouncer
+      DB_WRITE_PORT: "5432"
+      DB_STICKY: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - pgbouncer
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: vyntra-pgbouncer
+    ports:
+      - "6432:5432"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: ""
+      DB_NAME: postgres
+      AUTH_TYPE: trust
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 1000
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 5
+    volumes:
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt
+    depends_on:
+      - postgres
+    restart: unless-stopped
+  postgres:
+    image: postgres:17-alpine
+    container_name: vyntra-postgres-primary
+    ports:
+      - "5444:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=replica"
+      - "-c"
+      - "max_wal_senders=3"
+      - "-c"
+      - "max_replication_slots=3"
+      - "-c"
+      - "wal_keep_size=64"
+      - "-c"
+      - "hot_standby=on"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  postgres-replica:
+    image: postgres:17-alpine
+    container_name: vyntra-postgres-replica
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PRIMARY_HOST: postgres
+      PRIMARY_PORT: 5432
+      REPLICATION_USER: replica
+      REPLICATION_PASSWORD: replica_secret_2026
+    command:
+      - "postgres"
+      - "-c"
+      - "hot_standby=on"
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./docker/replica/init.sh:/docker-entrypoint-initdb.d/init.sh
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  postgres_replica_data:
