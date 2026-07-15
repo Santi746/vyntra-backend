@@ -73,6 +73,15 @@ return [
             'after_commit' => false,
         ],
 
+        'broadcasts' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => env('BROADCAST_QUEUE', 'broadcasts'),
+            'retry_after' => (int) env('BROADCAST_QUEUE_RETRY_AFTER', 90),
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

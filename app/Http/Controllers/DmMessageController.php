@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Dm\DmMessageCreated;
+use App\Events\Dm\DmMessageDeleted;
+use App\Events\Dm\DmMessageUpdated;
 use App\Http\Requests\Chat\StoreDmMessageRequest;
+use App\Http\Requests\Chat\UpdateDmMessageRequest;
 use App\Http\Resources\DmMessageResource;
 use App\Models\DmConversation;
 use App\Models\DmMessage;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -53,9 +58,41 @@ class DmMessageController extends Controller
 
         $message->load('sender');
 
+        if ($message->wasRecentlyCreated) {
+            DmMessageCreated::dispatch($message);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => new DmMessageResource($message),
         ], $message->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function update(UpdateDmMessageRequest $request, DmConversation $dmConversation, DmMessage $message): JsonResponse
+    {
+        Gate::authorize('update', $message);
+
+        $validated = $request->validated();
+        $message->update($validated);
+
+        DmMessageUpdated::dispatch($message);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => new DmMessageResource($message),
+        ]);
+    }
+
+    public function destroy(DmConversation $dmConversation, DmMessage $message): Response
+    {
+        Gate::authorize('delete', $message);
+
+        $messageUuid = (string) $message->uuid;
+        $conversationUuid = (string) $message->dm_conversation_uuid;
+        $message->delete();
+
+        DmMessageDeleted::dispatch($messageUuid, $conversationUuid);
+
+        return response()->noContent();
     }
 }

@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Club\ClubCreated;
+use App\Events\Club\ClubDeleted;
+use App\Events\Club\ClubUpdated;
 use App\Http\Requests\Club\StoreClubRequest;
 use App\Http\Requests\Club\UpdateClubRequest;
 use App\Http\Resources\ClubResource;
@@ -129,6 +132,8 @@ class ClubController extends Controller
                 'user_uuid' => $request->user()->uuid,
                 'club_uuid' => $club->uuid,
             ]);
+
+            ClubCreated::dispatch($club);
         }
 
         return response()->json([
@@ -148,6 +153,8 @@ class ClubController extends Controller
         $club->update($validated);
         $club->load('clubOwner');
 
+        ClubUpdated::dispatch($club);
+
         return response()->json([
             'status' => 'success',
             'data' => new ClubResource($club),
@@ -160,7 +167,10 @@ class ClubController extends Controller
     public function destroy(Club $club): Response
     {
         Gate::authorize('delete', $club);
+        $clubUuid = (string) $club->uuid;
         $club->delete();
+
+        ClubDeleted::dispatch($clubUuid);
 
         return response()->noContent();
     }

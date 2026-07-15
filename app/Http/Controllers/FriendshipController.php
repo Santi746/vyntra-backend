@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\User\FriendshipStatusChanged;
 use App\Http\Requests\User\RespondFriendshipRequest;
 use App\Http\Requests\User\StoreFriendshipRequest;
 use App\Http\Resources\FriendshipResource;
@@ -59,13 +60,23 @@ class FriendshipController extends Controller
         $friendship = Friendship::firstOrCreate(
             [
                 'sender_uuid' => $request->user()->uuid,
-                'client_uuid' => $validated['client_uuid'],
+                'receiver_uuid' => $validated['receiver_uuid'],
             ],
             [
-                'receiver_uuid' => $validated['receiver_uuid'],
+                'client_uuid' => $validated['client_uuid'],
                 'status' => 'pending',
             ]
         );
+
+        if ($friendship->wasRecentlyCreated) {
+            FriendshipStatusChanged::dispatch(
+                (string) $friendship->uuid,
+                (string) $friendship->sender_uuid,
+                (string) $friendship->receiver_uuid,
+                $friendship->status,
+                'created'
+            );
+        }
 
         return response()->json([
             'status' => 'success',
@@ -85,6 +96,14 @@ class FriendshipController extends Controller
         $validated = $request->validated();
 
         $friendship->update(['status' => $validated['action'] === 'accept' ? 'accepted' : 'declined']);
+
+        FriendshipStatusChanged::dispatch(
+            (string) $friendship->uuid,
+            (string) $friendship->sender_uuid,
+            (string) $friendship->receiver_uuid,
+            $friendship->status,
+            $validated['action']
+        );
 
         return response()->json([
             'status' => 'success',

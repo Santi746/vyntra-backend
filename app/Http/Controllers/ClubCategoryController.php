@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Club\CategoryCreated;
+use App\Events\Club\CategoryDeleted;
+use App\Events\Club\CategoryUpdated;
 use App\Http\Requests\Club\StoreClubCategoryRequest;
 use App\Http\Requests\Club\UpdateClubCategoryRequest;
 use App\Http\Resources\ClubCategoryResource;
@@ -69,6 +72,10 @@ class ClubCategoryController extends Controller
             ]
         );
 
+        if ($category->wasRecentlyCreated) {
+            CategoryCreated::dispatch($category);
+        }
+
         return response()->json([
             'status' => 'success',
             'data' => new ClubCategoryResource($category),
@@ -94,6 +101,8 @@ class ClubCategoryController extends Controller
 
         $category->update(Arr::except($validated, ['category_uuid', 'client_uuid']));
 
+        CategoryUpdated::dispatch($category);
+
         return response()->json([
             'status' => 'success',
             'data' => new ClubCategoryResource($category),
@@ -110,6 +119,8 @@ class ClubCategoryController extends Controller
         Gate::authorize('delete', $category);
 
         $category->delete();
+
+        CategoryDeleted::dispatch((string) $category->uuid, (string) $category->club_uuid);
 
         return response()->noContent();
     }

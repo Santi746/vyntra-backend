@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Club\ChannelCreated;
+use App\Events\Club\ChannelDeleted;
+use App\Events\Club\ChannelUpdated;
 use App\Http\Requests\Club\StoreClubChannelRequest;
 use App\Http\Requests\Club\UpdateClubChannelRequest;
 use App\Http\Resources\ClubChannelResource;
@@ -65,6 +68,10 @@ class ClubChannelController extends Controller
             ],
         );
 
+        if ($channel->wasRecentlyCreated) {
+            ChannelCreated::dispatch($channel, $club->uuid);
+        }
+
         return response()->json(
             ['status' => 'success', 'data' => new ClubChannelResource($channel)],
             $channel->wasRecentlyCreated ? 201 : 200,
@@ -83,6 +90,8 @@ class ClubChannelController extends Controller
         $validated = $request->validated();
         $channel->update($validated);
 
+        ChannelUpdated::dispatch($channel, $club->uuid);
+
         return response()->json(['status' => 'success', 'data' => new ClubChannelResource($channel)]);
     }
 
@@ -95,7 +104,10 @@ class ClubChannelController extends Controller
     {
         Gate::authorize('delete', $channel);
 
+        $channelUuid = (string) $channel->uuid;
         $channel->delete();
+
+        ChannelDeleted::dispatch($channelUuid, $club->uuid);
 
         return response()->noContent();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Club\MemberRoleAssigned;
 use App\Http\Requests\Club\AssignClubRoleRequest;
 use App\Models\Club;
 use App\Models\ClubMember;
@@ -28,6 +29,12 @@ class ClubMemberRoleController extends Controller
             'club_member_uuid' => $membership->uuid,
             'role_uuid' => $validated['role_uuid'],
         ]);
+
+        MemberRoleAssigned::dispatch(
+            $club->uuid,
+            $validated['user_uuid'],
+            $validated['role_uuid']
+        );
 
         return response()->json([
             'status' => 'success',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\Dm\DmConversationCreated;
 use App\Http\Requests\Chat\StoreDmConversationRequest;
 use App\Http\Resources\DmConversationResource;
 use App\Models\DmConversation;
@@ -63,6 +64,14 @@ class DmConversationController extends Controller
         );
 
         $conversation->load(['userOne', 'userTwo']);
+
+        if ($conversation->wasRecentlyCreated) {
+            DmConversationCreated::dispatch(
+                (string) $conversation->uuid,
+                (string) $user,
+                (string) $recipient
+            );
+        }
 
         return response()->json([
             'status' => 'success',
